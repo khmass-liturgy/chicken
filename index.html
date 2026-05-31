@@ -164,9 +164,9 @@ const db    = getFirestore(fbApp);
 // ── 상태 ─────────────────────────────────────
 let S = {
   userName: localStorage.getItem('ckdx_name') || '',
-  tab: 'farmer',       // farmer | expert
+  tab: 'farmer',
   cases: [],
-  screen: null,        // null | 'submit' | 'detail'
+  screen: null,        // null | 'submit' | 'detail' | 'settings'
   sel: null,
   newPhotoUrl: null,
   desc: '',
@@ -178,6 +178,7 @@ let S = {
   prevReviewed: new Set(),
   unsub: null,
   showNameModal: false,
+  nameEdit: '',
 };
 function set(u){ Object.assign(S,u); render(); }
 
@@ -201,13 +202,14 @@ function startListen(){
 
 // ── 케이스 제출 ───────────────────────────────
 async function doSubmit(){
-  if(!S.newPhotoUrl||!S.desc.trim()||S.submitting) return;
+  if(!S.desc.trim()||S.submitting) return;
   set({submitting:true});
   let done=false;
   const timer=setTimeout(()=>{ if(!done){ done=true; set({submitting:false}); alert('⏱️ 연결 시간 초과\nFirebase 설정값을 확인해 주세요.'); } },15000);
   try{
     await addDoc(collection(db,'cases'),{
-      farmerName:S.userName, description:S.desc, photoUrl:S.newPhotoUrl,
+      farmerName:S.userName, description:S.desc,
+      photoUrl:S.newPhotoUrl||null,
       expertComment:null, expertName:null, status:'pending',
       createdAt:Date.now(), updatedAt:Date.now(),
     });
@@ -268,7 +270,7 @@ function render(){
 }
 
 function buildHTML(){
-  // 이름 없으면 모달
+  // 이름 없으면 이름 입력 모달
   const modal = (!S.userName || S.showNameModal) ? `
     <div class="modal-bg" data-a="modal-bg">
       <div class="modal">
@@ -283,9 +285,45 @@ function buildHTML(){
       </div>
     </div>` : '';
 
+  // 설정 화면
+  const settingsModal = S.screen==='settings' ? `
+    <div class="subscreen">
+      <div class="sub-hdr">
+        <button class="back-btn" data-a="back">←</button>
+        <span class="sub-title">⚙️ 설정</span>
+      </div>
+      <div class="sub-scroll">
+        <div class="section" style="margin-top:4px">
+          <div class="s-title">👤 농장 정보 수정</div>
+          <div class="s-body">
+            <label class="field-label">이름 / 농장명</label>
+            <input class="modal-input" id="name-edit-input" type="text"
+              placeholder="예: 행복한 농장 / 김수의사"
+              value="${esc(S.userName)}" autocomplete="off"
+              style="margin-bottom:12px"/>
+            <button class="submit-btn" data-a="save-name-edit">저장하기</button>
+          </div>
+        </div>
+        <div class="section" style="margin-top:4px">
+          <div class="s-title">🏠 초기화면으로</div>
+          <div class="s-body">
+            <p style="color:#616161;font-size:13px;margin-bottom:14px;line-height:1.7">
+              이름을 초기화하고 처음 시작 화면으로 돌아갑니다.
+            </p>
+            <button data-a="go-initial"
+              style="width:100%;padding:14px;background:#FFEBEE;color:#C62828;border:1.5px solid #FFCDD2;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+              🔄 초기화면으로 돌아가기
+            </button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+    </div>` : '';
+
   // 서브스크린 (제출/상세)
   if(S.screen==='submit') return modal + rSubmit();
   if(S.screen==='detail' && S.sel) return modal + rDetail();
+  if(S.screen==='settings') return modal + settingsModal;
 
   // 메인
   const myC=myCases(), pen=myC.filter(c=>c.status==='pending'), rev=myC.filter(c=>c.status==='reviewed');
@@ -348,11 +386,11 @@ function buildHTML(){
       </div>`:''}
     ${S.cases.length===0?`<div class="empty"><div class="empty-icon">📭</div><div class="empty-txt">진단 요청이 없습니다.<br/>농가에서 요청하면 여기에 표시됩니다.</div></div>`:''}`;
 
-  return `${modal}
+  return `${modal}${settingsModal||''}
     <div class="top-hdr">
       <span class="app-name">🐔 닭 질병 진단</span>
-      <div class="user-chip" data-a="change-name">
-        👤 ${esc(S.userName||'이름 입력')}
+      <div class="user-chip" data-a="go-settings">
+        👤 ${esc(S.userName||'이름 입력')} &nbsp;⚙️
       </div>
     </div>
     <div class="tab-bar">
@@ -376,7 +414,7 @@ function buildHTML(){
 
 // ── 제출 화면 ─────────────────────────────────
 function rSubmit(){
-  const ok=!!S.newPhotoUrl&&S.desc.trim().length>0&&!S.submitting;
+  const ok=S.desc.trim().length>0&&!S.submitting;
   return`
   <div class="subscreen">
     <div class="sub-hdr">
@@ -389,6 +427,7 @@ function rSubmit(){
         ${!S.submitting?`<button class="clr-photo" data-a="clr-photo">✕ 사진 삭제</button>`:''}
       `:''}
       ${!S.submitting?`
+      <label class="field-label">사진 첨부 <span style="color:#9E9E9E;font-weight:400;font-size:12px">(선택사항)</span></label>
       <div class="photo-btns">
         <label for="pi-cam" class="photo-btn pbtn-cam">📷 카메라 촬영</label>
         <label for="pi-gal" class="photo-btn pbtn-gal">🖼️ 갤러리 선택</label>
@@ -402,7 +441,7 @@ function rSubmit(){
           ?`<div class="loading-row"><div class="spin"></div><span>전송 중...</span></div>`
           :'📤&nbsp;&nbsp;전문가에게 진단 요청하기'}
       </button>
-      <div class="sub-note">사진과 증상을 전문가에게 전송합니다.</div>
+      <div class="sub-note">증상 설명만으로도 요청 가능합니다.<br/>사진이 있으면 더 정확한 진단에 도움이 됩니다.</div>
       <div class="spacer"></div>
     </div>
   </div>`;}
@@ -468,14 +507,25 @@ function bind(){
   document.getElementById('root').addEventListener('click', async e=>{
     const el=e.target.closest('[data-a]'); if(!el) return;
     const a=el.dataset.a;
-    if(a==='tab')         { set({tab:el.dataset.tab, replyBadge: el.dataset.tab==='farmer'?S.replyBadge:S.replyBadge}); }
+    if(a==='tab')              { set({tab:el.dataset.tab}); }
     else if(a==='go-submit')   { if(!S.userName){set({showNameModal:true});return;} set({screen:'submit',newPhotoUrl:null,desc:''}); }
+    else if(a==='go-settings') { set({screen:'settings', nameEdit:S.userName}); }
     else if(a==='back')        { set({screen:null,sel:null,comment:''}); }
     else if(a==='clr-photo')   { set({newPhotoUrl:null}); }
     else if(a==='submit')      { S.desc=document.getElementById('di')?.value||S.desc; await doSubmit(); }
     else if(a==='do-comment')  { S.comment=document.getElementById('ci')?.value||S.comment; await doComment(); }
     else if(a==='open')        { const f=S.cases.find(c=>c.id===el.dataset.id); if(f) set({sel:f,screen:'detail',comment:''}); }
     else if(a==='clr-badge')   { set({replyBadge:0}); }
+    else if(a==='save-name-edit') {
+      const v=document.getElementById('name-edit-input')?.value?.trim();
+      if(v){ localStorage.setItem('ckdx_name',v); S.userName=v; set({screen:null}); }
+    }
+    else if(a==='go-initial')  {
+      if(S.unsub) S.unsub();
+      localStorage.removeItem('ckdx_name');
+      Object.assign(S,{userName:'',screen:null,cases:[],replyBadge:0,pendingBadge:0,prevReviewed:new Set(),unsub:null,showNameModal:false});
+      render();
+    }
     else if(a==='change-name') { set({showNameModal:true}); }
     else if(a==='modal-bg')    { if(e.target===el && S.userName) set({showNameModal:false}); }
   });
