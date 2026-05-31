@@ -119,7 +119,7 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-seri
 .divider{height:1px;background:#F0F0F0;margin:16px 0}
 .comment-count{font-weight:700;font-size:14px;color:#1B5E20;margin-bottom:12px}
 .comment-item{background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;border:1.5px solid #F0F0F0}
-.comment-author{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.comment-author{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .comment-name{font-weight:700;font-size:13px;color:#212121}
 .comment-date{font-size:11px;color:#9E9E9E}
 .comment-content{color:#37474F;font-size:14px;line-height:1.7;white-space:pre-wrap}
@@ -436,7 +436,20 @@ async function doComment(){
   }
 }
 
-// ── 게시글 삭제 ───────────────────────────────
+// ── 댓글 삭제 ────────────────────────────────
+async function doDeleteComment(commentId){
+  if(!confirm('이 댓글을 삭제하시겠습니까?')) return;
+  try{
+    await deleteDoc(doc(db,'comments',commentId));
+    const cnt = Math.max(0,(S.selPost?.commentCount||1)-1);
+    await updateDoc(doc(db,'posts',S.selPost.id),{commentCount:cnt});
+    loadComments(S.selPost.id);
+  }catch(e){
+    alert('삭제 오류: '+e.message);
+  }
+}
+
+// ── 관리자 액션 ───────────────────────────────
 async function doDeletePost(postId){
   if(!confirm('이 게시글을 삭제하시겠습니까?\n댓글도 함께 삭제됩니다.')) return;
   try{
@@ -728,6 +741,11 @@ function rPostDetail(){
           <span class="chip ${roleChipCls(c.authorRole)}" style="font-size:11px">${roleLabel(c.authorRole)}</span>
           <span class="comment-name">${esc(c.authorName)}</span>
           <span class="comment-date">${fmtDate(c.createdAt)}</span>
+          ${(S.userDoc?.uid===c.authorId || S.userDoc?.role==='admin')
+            ?`<button data-a="delete-comment" data-id="${c.id}"
+                style="margin-left:auto;background:none;border:none;color:#BDBDBD;
+                       cursor:pointer;font-size:13px;padding:2px 6px">🗑️</button>`
+            :''}
         </div>
         <div class="comment-content">${esc(c.content)}</div>
       </div>`).join('')}
@@ -821,7 +839,8 @@ function bindEvents(){
         if(S._unsubComments){S._unsubComments();S._unsubComments=null;}
         set({screen:'main',selPost:null,comments:[]});
       }
-      else if(a==='delete-post') await doDeletePost(el.dataset.id);
+      else if(a==='delete-post')    await doDeletePost(el.dataset.id);
+      else if(a==='delete-comment') await doDeleteComment(el.dataset.id);
       else if(a==='do-comment') { syncComment(); await doComment(); }
       else if(a==='approve')    await doApprove(el.dataset.uid,true);
       else if(a==='reject')     await doApprove(el.dataset.uid,false);
