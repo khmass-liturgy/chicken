@@ -220,7 +220,11 @@ const fmtDate = ts => new Date(ts).toLocaleDateString('ko-KR',{month:'short',day
 const roleLabel = r => ({farmer:'🌾 농가', vet:'🩺 수의사', admin:'⚙️ 관리자'}[r]||r);
 const roleChipCls = r => ({farmer:'chip-green', vet:'chip-blue', admin:'chip-gray'}[r]||'chip-gray');
 
-// ── Auth 상태 감지 ─────────────────────────────
+// ── 중복 제출 방지 잠금 ────────────────────────
+let _registering = false;
+let _posting = false;
+let _commenting = false;
+let _mainStarted = false; // 메인 리스너 중복 실행 방지
 onAuthStateChanged(auth, user => {
   if(user){
     S.authUser = user;
@@ -230,6 +234,8 @@ onAuthStateChanged(auth, user => {
     startUserListener(user.uid);
   } else {
     ['_unsubUser','_unsubPosts','_unsubComments','_unsubPending'].forEach(k=>{ if(S[k]){S[k]();S[k]=null;} });
+    _mainStarted = false; // 로그아웃 시 초기화
+    _registering = false;
     Object.assign(S,{authUser:null,userDoc:null,posts:[],vets:[],myPosts:[],pendingUsers:[],
       screen:'login', lLoading:false, rLoading:false});
     render();
@@ -273,6 +279,8 @@ function startUserListener(uid){
 }
 
 function startMainListeners(ud){
+  if(_mainStarted) return; // 중복 실행 차단
+  _mainStarted = true;
   // 게시글
   if(S._unsubPosts) S._unsubPosts();
   S._unsubPosts = onSnapshot(query(collection(db,'posts'),orderBy('createdAt','desc')), snap=>{
@@ -286,7 +294,11 @@ function startMainListeners(ud){
   if(ud.role==='admin'){
     if(S._unsubPending) S._unsubPending();
     S._unsubPending = onSnapshot(query(collection(db,'users'),where('status','==','pending')), snap=>{
-      S.pendingUsers = snap.docs.map(d=>({id:d.id,...d.data()}));
+      // 이메일 기준 중복 제거
+      const seen = new Set();
+      S.pendingUsers = snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(u=>{ if(seen.has(u.email)) return false; seen.add(u.email); return true; });
       render();
     });
   }
@@ -319,12 +331,14 @@ async function doLogin(){
 }
 
 async function doRegister(){
+  if(_registering) return; // 중복 제출 완전 차단
   const {rRole,rName,rEmail,rPass,rFarm,rClinic} = S;
   if(!rName.trim()||!rEmail.trim()||!rPass){ set({rErr:'모든 항목을 입력해주세요.'}); return; }
   if(rRole==='farmer'&&!rFarm.trim()){ set({rErr:'농장명을 입력해주세요.'}); return; }
   if(rRole==='vet'&&!rClinic.trim()){ set({rErr:'병원/기관명을 입력해주세요.'}); return; }
   if(rPass.length<6){ set({rErr:'비밀번호는 6자 이상이어야 합니다.'}); return; }
   set({rLoading:true,rErr:''});
+  _registering = true;
   try{
     const cred = await createUserWithEmailAndPassword(auth,rEmail.trim(),rPass);
     const isAdmin = rEmail.trim()===ADMIN_EMAIL;
@@ -351,13 +365,15 @@ async function doRegister(){
   }catch(e){
     const m={'auth/email-already-in-use':'이미 가입된 이메일입니다.','auth/weak-password':'비밀번호가 너무 약합니다.',
              'auth/invalid-email':'이메일 형식이 올바르지 않습니다.'};
+    _registering = false;
     set({rLoading:false,rErr:m[e.code]||'가입 오류: '+e.message});
   }
 }
 
 // ── 게시글 액션 ───────────────────────────────
 async function doPost(){
-  if(!S.npTitle.trim()||!S.npContent.trim()||S.npPosting) return;
+  if(_posting||!S.npTitle.trim()||!S.npContent.trim()) return;
+  _posting = true;
   set({npPosting:true});
   try{
     await addDoc(collection(db,'posts'),{
@@ -368,14 +384,17 @@ async function doPost(){
       commentCount:0, createdAt:Date.now(),
     });
     set({npPosting:false,npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',screen:'main',showVetSelect:false});
+    _posting = false;
   }catch(e){
     alert('오류: '+e.message);
+    _posting = false;
     set({npPosting:false});
   }
 }
 
 async function doComment(){
-  if(!S.newComment.trim()||!S.selPost||S.commenting) return;
+  if(_commenting||!S.newComment.trim()||!S.selPost) return;
+  _commenting = true;
   set({commenting:true});
   try{
     await addDoc(collection(db,'comments'),{
@@ -385,8 +404,10 @@ async function doComment(){
     });
     await updateDoc(doc(db,'posts',S.selPost.id),{commentCount:(S.selPost.commentCount||0)+1});
     set({commenting:false,newComment:''});
+    _commenting = false;
   }catch(e){
     alert('오류: '+e.message);
+    _commenting = false;
     set({commenting:false});
   }
 }
