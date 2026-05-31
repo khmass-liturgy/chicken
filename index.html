@@ -1,147 +1,154 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <title>🐔 닭 질병 진단</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased}
-body{background:#F0F7F0}
-#root{min-height:100vh;max-width:600px;margin:0 auto;display:flex;flex-direction:column}
+html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;background:#F0F7F0}
+#root{max-width:600px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#F0F7F0}
 
-.s-welcome{min-height:100vh;background:linear-gradient(155deg,#071a0c 0%,#0f3a1a 35%,#1B5E20 70%,#2E7D32 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.w-hero{text-align:center;margin-bottom:48px}
-.w-icon{font-size:80px;line-height:1}
-.w-title{color:#fff;font-size:clamp(22px,5vw,28px);font-weight:900;margin-top:16px;letter-spacing:-0.5px}
-.w-sub{color:#81C784;font-size:13px;margin-top:8px}
-.role-cards{display:flex;gap:16px;width:100%;max-width:400px}
-.role-card{flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);border-radius:22px;padding:28px 16px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .18s;-webkit-tap-highlight-color:transparent;font-family:inherit}
-.role-card:active{background:rgba(255,255,255,.2);transform:scale(.97)}
-.re{font-size:46px}.rl{font-size:20px;font-weight:700}.rd{font-size:12px;color:#A5D6A7;text-align:center}
-.w-note{color:rgba(255,255,255,.35);font-size:12px;margin-top:44px;text-align:center;line-height:1.7;max-width:300px}
+/* ── 이름 입력 모달 ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:#fff;border-radius:24px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-icon{font-size:52px;text-align:center}
+.modal-title{font-size:20px;font-weight:700;color:#1B5E20;text-align:center;margin-top:12px}
+.modal-sub{font-size:13px;color:#9E9E9E;text-align:center;margin-top:6px;margin-bottom:24px}
+.modal-input{width:100%;padding:13px 16px;border:2px solid #E0E0E0;border-radius:12px;font-size:16px;font-family:inherit;outline:none;transition:border-color .2s;margin-bottom:12px}
+.modal-input:focus{border-color:#1B5E20}
+.modal-btn{width:100%;padding:14px;background:#1B5E20;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+.modal-btn:disabled{background:#BDBDBD}
 
-.s-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.login-card{background:#fff;border-radius:24px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.22)}
-.back-btn{background:none;border:none;color:#9E9E9E;font-size:13px;cursor:pointer;margin-bottom:16px;font-family:inherit;display:block}
-.l-header{text-align:center;margin-bottom:28px}
-.l-emoji{font-size:52px}
-.l-title{font-size:22px;font-weight:700;margin-top:12px}
-.l-sub{color:#90A4AE;font-size:13px;margin-top:6px}
-.txt-input{width:100%;padding:13px 16px;border:2px solid #E0E0E0;border-radius:12px;font-size:16px;font-family:inherit;color:#212121;outline:none;margin-bottom:12px;transition:border-color .2s}
-.pri-btn{width:100%;padding:14px;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
-.pri-btn:disabled{background:#BDBDBD!important;cursor:not-allowed}
-.pri-btn:active:not(:disabled){opacity:.85}
+/* ── 상단 헤더 ── */
+.top-hdr{background:#1B5E20;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.app-name{color:#fff;font-weight:900;font-size:17px;letter-spacing:-.3px}
+.user-chip{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent}
+.user-chip:active{background:rgba(255,255,255,.25)}
 
-.app-hdr{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:58px;box-shadow:0 2px 8px rgba(0,0,0,.2);flex-shrink:0}
-.hdr-l{display:flex;align-items:center;gap:10px}
-.hdr-title{color:#fff;font-weight:700;font-size:15px}
-.nbadge{background:#E53935;color:#fff;border-radius:12px;padding:1px 8px;font-size:12px;font-weight:700}
-.lgout{background:none;border:none;color:rgba(255,255,255,.75);cursor:pointer;font-size:13px;font-family:inherit}
-.hdr-back{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:2px 6px;line-height:1}
+/* ── 탭 바 ── */
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid #E8F5E9;position:sticky;top:58px;z-index:99}
+.tab{flex:1;padding:12px 8px;text-align:center;cursor:pointer;border:none;background:none;font-family:inherit;transition:all .18s;-webkit-tap-highlight-color:transparent;position:relative}
+.tab-icon{font-size:22px;display:block}
+.tab-label{font-size:11px;font-weight:600;color:#9E9E9E;margin-top:2px;display:block}
+.tab.active .tab-label{color:#1B5E20}
+.tab-indicator{position:absolute;bottom:0;left:10%;right:10%;height:2.5px;background:#1B5E20;border-radius:2px;display:none}
+.tab.active .tab-indicator{display:block}
+.tab-badge{position:absolute;top:6px;right:calc(50% - 18px);background:#E53935;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px}
 
-.stats{display:flex;gap:10px;padding:16px 16px 8px}
-.stat{flex:1;background:#fff;border-radius:14px;padding:14px 8px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.sv{font-size:26px;font-weight:900}.sl{font-size:11px;color:#9E9E9E;margin-top:3px}
+/* ── 컨텐츠 영역 ── */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
 
-.green-btn{display:block;width:calc(100% - 32px);margin:0 16px 8px;padding:15px;background:linear-gradient(135deg,#2E7D32,#43A047);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(46,125,50,.28);text-align:center;-webkit-tap-highlight-color:transparent}
+/* ── 통계 카드 ── */
+.stats{display:flex;gap:10px;padding:14px 16px 8px}
+.stat{flex:1;background:#fff;border-radius:14px;padding:13px 8px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.sv{font-size:24px;font-weight:900}.sl{font-size:11px;color:#9E9E9E;margin-top:2px}
+
+/* ── 버튼 ── */
+.green-btn{display:block;width:calc(100% - 32px);margin:0 16px 10px;padding:15px;background:linear-gradient(135deg,#2E7D32,#43A047);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(46,125,50,.28);text-align:center;-webkit-tap-highlight-color:transparent}
 .green-btn:active{opacity:.87;transform:scale(.98)}
 
-.case-list{padding:12px 16px 32px;display:flex;flex-direction:column;gap:10px}
-.case-card{background:#fff;border-radius:16px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);border:1.5px solid #E0E0E0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+/* ── 케이스 카드 ── */
+.case-list{padding:6px 16px 20px;display:flex;flex-direction:column;gap:10px}
+.case-card{background:#fff;border-radius:16px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);border:1.5px solid #E8E8E8;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .case-card:active{transform:scale(.98)}
 .case-card.pending{border-color:#FFE0B2}
 .case-card.reviewed{border-color:#C8E6C9}
-.ci{flex:1;overflow:hidden}
-.cbadges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:5px}
+.ci{flex:1;min-width:0}
+.cbadges{display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap}
 .badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
 .bp{background:#FFF3E0;color:#E65100}
 .br{background:#E8F5E9;color:#2E7D32}
-.cfarmer{font-weight:700;font-size:14px;color:#212121}
-.cdesc{color:#616161;font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cdate{color:#9E9E9E;font-size:11px;margin-top:4px}
+.cfarmer{font-weight:700;font-size:13px;color:#1B5E20;margin-bottom:3px}
+.cdesc{color:#616161;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cdate{color:#BDBDBD;font-size:11px;margin-top:4px}
 .carrow{color:#CFD8DC;font-size:22px;flex-shrink:0}
 
-.empty{text-align:center;padding:60px 24px}
-.empty-icon{font-size:52px}
-.empty-txt{color:#9E9E9E;font-size:14px;margin-top:14px;line-height:1.75}
+.empty{text-align:center;padding:52px 24px}
+.empty-icon{font-size:48px}
+.empty-txt{color:#9E9E9E;font-size:14px;margin-top:12px;line-height:1.75}
 
-.ralert{margin:4px 16px 8px;background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:8px}
-.ralert-txt{color:#2E7D32;font-weight:600;font-size:14px}
+.reply-alert{margin:4px 16px 8px;background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.reply-txt{color:#2E7D32;font-weight:600;font-size:13px}
 
-.shdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:0 16px}
-.shdr-t{font-weight:700;font-size:14px;color:#37474F}
-.shdr-c{padding:2px 9px;border-radius:12px;font-size:12px;font-weight:700}
+.shdr{display:flex;align-items:center;gap:8px;padding:12px 16px 6px}
+.shdr-t{font-weight:700;font-size:13px;color:#37474F}
+.shdr-c{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
 
-.scr-scroll{flex:1;overflow-y:auto;padding:16px 16px 40px;-webkit-overflow-scrolling:touch}
-.photo-area{background:#E8F5E9;border:2px dashed #81C784;border-radius:16px;min-height:200px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;cursor:pointer;overflow:hidden;position:relative;-webkit-tap-highlight-color:transparent}
-.photo-area.hp{border-style:solid;border-color:transparent;background:transparent;cursor:default}
-.photo-area img{width:100%;max-height:300px;object-fit:cover;border-radius:14px;display:block}
-.pp{text-align:center;padding:32px}
-.pp-icon{font-size:52px}
-.pp-hint{color:#43A047;font-weight:600;margin-top:8px;font-size:15px}
-.pp-sub{color:#9E9E9E;font-size:13px;margin-top:4px}
-.clr-photo{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
-.re-photo{width:100%;padding:10px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #81C784;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;margin-bottom:12px;font-family:inherit;-webkit-tap-highlight-color:transparent}
-.fl{color:#37474F;font-weight:600;font-size:14px;margin-bottom:8px;display:block}
-.fr{color:#E53935}
-.textarea{width:100%;padding:13px 14px;border:2px solid #E0E0E0;border-radius:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:#212121;line-height:1.65;margin-bottom:18px;min-height:130px;transition:border-color .2s}
+/* ── 제출/상세 화면 ── */
+.subscreen{position:fixed;inset:0;max-width:600px;margin:0 auto;background:#F0F7F0;z-index:150;display:flex;flex-direction:column;overflow:hidden}
+.sub-hdr{background:#1B5E20;display:flex;align-items:center;gap:10px;padding:0 16px;height:56px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sub-hdr.expert{background:#0D47A1}
+.back-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;flex-shrink:0}
+.sub-title{color:#fff;font-weight:700;font-size:15px}
+.sub-badge{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;margin-left:auto}
+.sub-scroll{flex:1;overflow-y:auto;padding:16px 16px 40px;-webkit-overflow-scrolling:touch}
+
+.photo-btns{display:flex;gap:10px;margin-bottom:12px}
+.photo-btn{flex:1;padding:14px 8px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;display:block;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.pbtn-cam{background:#1B5E20;color:#fff;border:none}
+.pbtn-gal{background:#E8F5E9;color:#1B5E20;border:1.5px solid #81C784}
+
+.photo-preview{width:100%;max-height:280px;object-fit:cover;border-radius:14px;display:block;margin-bottom:10px;position:relative}
+.clr-photo{display:block;width:100%;padding:9px;background:#FFEBEE;color:#C62828;border:1.5px solid #FFCDD2;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;margin-bottom:12px;font-family:inherit;text-align:center}
+
+.field-label{color:#37474F;font-weight:600;font-size:14px;margin-bottom:7px;display:block}
+.req{color:#E53935}
+.textarea{width:100%;padding:13px;border:2px solid #E0E0E0;border-radius:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:#212121;line-height:1.65;margin-bottom:16px;min-height:120px;transition:border-color .2s}
 .textarea:focus{border-color:#4CAF50}
-.sub-btn{width:100%;padding:16px;background:linear-gradient(135deg,#2E7D32,#43A047);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(46,125,50,.28);-webkit-tap-highlight-color:transparent}
-.sub-btn:disabled{background:#BDBDBD;box-shadow:none;cursor:not-allowed}
-.sub-btn:active:not(:disabled){opacity:.87}
-.sub-note{text-align:center;color:#9E9E9E;font-size:12px;margin-top:12px;line-height:1.7}
 
-.det-photo{width:100%;max-height:280px;object-fit:cover;border-radius:16px;margin-bottom:14px;display:block}
+.submit-btn{width:100%;padding:15px;background:linear-gradient(135deg,#2E7D32,#43A047);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(46,125,50,.28)}
+.submit-btn:disabled{background:#BDBDBD;box-shadow:none;cursor:not-allowed}
+.sub-note{text-align:center;color:#9E9E9E;font-size:12px;margin-top:10px;line-height:1.7}
+
+.det-photo{width:100%;max-height:270px;object-fit:cover;border-radius:16px;margin-bottom:14px;display:block}
 .det-meta{margin-bottom:14px}
 .det-farmer{font-weight:700;font-size:15px;color:#212121}
 .det-date{font-size:12px;color:#9E9E9E;margin-top:3px}
-.section{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);border:1.5px solid #F5F5F5}
+
+.section{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,.05);border:1.5px solid #F0F0F0}
 .section.acc{background:#F3F4FF;border-color:#C5CAE9}
 .s-title{font-weight:700;font-size:14px;color:#1A237E}
 .s-sub{font-size:11px;color:#9E9E9E;margin-top:2px}
-.s-body{margin-top:10px}
-.ival{color:#37474F;font-size:14px;line-height:1.75;margin-bottom:10px}
+.s-body{margin-top:10px;color:#37474F;font-size:14px;line-height:1.75}
+
 .exp-comment{color:#1A237E;font-size:14px;line-height:1.8;white-space:pre-wrap}
 .wait-box{background:#FFF8E1;border:1.5px solid #FFE082;border-radius:14px;padding:20px;text-align:center;margin-bottom:12px}
-.wait-icon{font-size:36px}
+.wait-icon{font-size:34px}
 .wait-title{color:#E65100;font-weight:600;font-size:15px;margin-top:8px}
 .wait-desc{color:#9E9E9E;font-size:13px;margin-top:4px}
-.comment-area{width:100%;padding:13px 14px;border:2px solid #E0E0E0;border-radius:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:#212121;line-height:1.65;margin-bottom:12px;min-height:140px;background:#F8F9FA}
-.comment-area:focus{border-color:#3F51B5}
-.exp-btn{width:100%;padding:15px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(13,71,161,.28);-webkit-tap-highlight-color:transparent}
-.exp-btn:disabled{background:#BDBDBD;box-shadow:none;cursor:not-allowed}
-.exp-btn:active:not(:disabled){opacity:.87}
-.done-note{color:#9E9E9E;font-size:12px;text-align:center;margin-top:8px}
-.rev-comment{background:#EEF2FF;border-radius:10px;padding:14px;margin-bottom:8px}
 
-.spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;flex-shrink:0;vertical-align:middle}
+.comment-area{width:100%;padding:13px;border:2px solid #E0E0E0;border-radius:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:#212121;line-height:1.65;margin-bottom:12px;min-height:130px;background:#F8F9FA}
+.comment-area:focus{border-color:#3F51B5}
+.exp-btn{width:100%;padding:15px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(13,71,161,.25)}
+.exp-btn:disabled{background:#BDBDBD;box-shadow:none;cursor:not-allowed}
+.rev-comment{background:#EEF2FF;border-radius:10px;padding:14px;margin-bottom:8px}
+.done-note{color:#9E9E9E;font-size:12px;text-align:center}
+
+.photo-loading{width:100%;height:180px;background:#E8F5E9;border-radius:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;color:#9E9E9E;font-size:14px}
+
+.spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .loading-row{display:flex;align-items:center;justify-content:center;gap:10px}
-.photo-btns{display:flex;gap:10px;padding:20px 16px}
-.photo-btn{flex:1;padding:14px 8px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;display:block;font-family:inherit}
-.photo-btn-cam{background:#1B5E20;color:#fff}
-.photo-btn-gal{background:#E8F5E9;color:#1B5E20;border:1.5px solid #81C784}
-.spacer{height:40px}
-.photo-loading{width:100%;height:200px;background:#E8F5E9;border-radius:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;color:#9E9E9E;font-size:14px}
+.spacer{height:32px}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<input type="file" id="pi-cam" accept="image/*" capture="environment" style="display:none" />
-<input type="file" id="pi-gal" accept="image/*" style="display:none" />
+<input type="file" id="pi-cam" accept="image/*" capture="environment" style="display:none"/>
+<input type="file" id="pi-gal" accept="image/*" style="display:none"/>
 
 <script type="module">
-import { initializeApp }      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp }    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy }
-                               from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+                             from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ╔══════════════════════════════════════════════════╗
-// ║  ⚠️  Firebase 설정값을 여기에 입력하세요         ║
-// ╚══════════════════════════════════════════════════╝
+// ╔══════════════════════════════════════════╗
+// ║  ⚠️  Firebase 설정값을 여기에 입력하세요  ║
+// ╚══════════════════════════════════════════╝
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyALVnXknySYP_snXoSRLFEECF2MRtQJ0Yc",
   authDomain:        "chicken-dx.firebaseapp.com",
@@ -154,104 +161,94 @@ const FIREBASE_CONFIG = {
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db    = getFirestore(fbApp);
 
-// ── 상태 ──────────────────────────────────────────
+// ── 상태 ─────────────────────────────────────
 let S = {
-  screen:'welcome', role:null, userName:'',
-  cases:[], sel:null,
-  newPhotoUrl:null, desc:'',
-  saving:false, submitting:false,
-  comment:'',
-  replyBadge:0, pendingBadge:0,
-  prevReviewed:new Set(), unsub:null,
+  userName: localStorage.getItem('ckdx_name') || '',
+  tab: 'farmer',       // farmer | expert
+  cases: [],
+  screen: null,        // null | 'submit' | 'detail'
+  sel: null,
+  newPhotoUrl: null,
+  desc: '',
+  submitting: false,
+  comment: '',
+  saving: false,
+  replyBadge: 0,
+  pendingBadge: 0,
+  prevReviewed: new Set(),
+  unsub: null,
+  showNameModal: false,
 };
 function set(u){ Object.assign(S,u); render(); }
 
-// ── Firestore 실시간 구독 ──────────────────────────
-function listen(){
+// ── Firestore 구독 ────────────────────────────
+function startListen(){
   if(S.unsub) S.unsub();
   const q = query(collection(db,'cases'), orderBy('createdAt','desc'));
   S.unsub = onSnapshot(q, snap=>{
     const cases = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(S.role==='farmer'){
-      const myR = new Set(cases.filter(c=>c.farmerName===S.userName&&c.status==='reviewed').map(c=>c.id));
-      const news = [...myR].filter(id=>!S.prevReviewed.has(id));
-      if(news.length && S.prevReviewed.size) S.replyBadge += news.length;
-      S.prevReviewed = myR;
-    }
+    // 새 답변 감지
+    const myR = new Set(cases.filter(c=>c.farmerName===S.userName&&c.status==='reviewed').map(c=>c.id));
+    const news = [...myR].filter(id=>!S.prevReviewed.has(id));
+    if(news.length && S.prevReviewed.size) S.replyBadge += news.length;
+    S.prevReviewed = myR;
     if(S.sel) S.sel = cases.find(c=>c.id===S.sel.id)||S.sel;
     S.cases = cases;
-    S.pendingBadge = S.role==='expert' ? cases.filter(c=>c.status==='pending').length : 0;
+    S.pendingBadge = cases.filter(c=>c.status==='pending').length;
     render();
   });
 }
 
-// ── 케이스 제출 ────────────────────────────────────
+// ── 케이스 제출 ───────────────────────────────
 async function doSubmit(){
   if(!S.newPhotoUrl||!S.desc.trim()||S.submitting) return;
   set({submitting:true});
-
-  // 15초 타임아웃
-  let timedOut = false;
-  const timer = setTimeout(()=>{
-    timedOut = true;
-    set({submitting:false});
-    alert('⏱️ 연결 시간 초과\n\n아래를 확인해 주세요:\n1. Firebase 설정값이 맞는지 확인\n2. Firestore 데이터베이스가 생성되었는지 확인\n3. 인터넷 연결 확인');
-  }, 15000);
-
+  let done=false;
+  const timer=setTimeout(()=>{ if(!done){ done=true; set({submitting:false}); alert('⏱️ 연결 시간 초과\nFirebase 설정값을 확인해 주세요.'); } },15000);
   try{
     await addDoc(collection(db,'cases'),{
-      farmerName: S.userName,
-      description: S.desc,
-      photoUrl: S.newPhotoUrl,
-      expertComment: null,
-      expertName: null,
-      status: 'pending',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      farmerName:S.userName, description:S.desc, photoUrl:S.newPhotoUrl,
+      expertComment:null, expertName:null, status:'pending',
+      createdAt:Date.now(), updatedAt:Date.now(),
     });
-    clearTimeout(timer);
-    if(!timedOut) set({submitting:false, newPhotoUrl:null, desc:'', screen:'farmer'});
+    clearTimeout(timer); done=true;
+    set({submitting:false,newPhotoUrl:null,desc:'',screen:null});
   }catch(e){
-    clearTimeout(timer);
-    if(!timedOut){
-      set({submitting:false});
-      alert('❌ 저장 오류\n\n'+e.message+'\n\nFirestore 데이터베이스가 생성되어 있는지 확인해 주세요.');
-    }
+    clearTimeout(timer); done=true;
+    set({submitting:false});
+    alert('❌ 저장 오류\n'+e.message);
   }
 }
 
-// ── 전문가 코멘트 저장 ─────────────────────────────
+// ── 전문가 코멘트 ─────────────────────────────
 async function doComment(){
   if(!S.comment.trim()||!S.sel||S.saving) return;
   set({saving:true});
   try{
     await updateDoc(doc(db,'cases',S.sel.id),{
-      expertComment: S.comment,
-      expertName: S.userName,
-      status: 'reviewed',
-      updatedAt: Date.now(),
+      expertComment:S.comment, expertName:S.userName,
+      status:'reviewed', updatedAt:Date.now(),
     });
-    set({saving:false, comment:''});
+    set({saving:false,comment:''});
   }catch(e){
-    alert('저장 오류: '+e.message);
-    set({saving:false});
+    set({saving:false}); alert('❌ 저장 오류\n'+e.message);
   }
 }
 
-// ── 이미지 리사이즈 ────────────────────────────────
+// ── 이미지 리사이즈 ───────────────────────────
 function resizeImg(file){
   return new Promise(res=>{
-    const reader = new FileReader();
-    reader.onload = e=>{
-      const img = new Image();
-      img.onload = ()=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
         let {width:w,height:h}=img;
-        const m=600; // 작게 줄여서 Firestore 용량 절감
+        const m=600;
         if(w>m||h>m){ if(w>h){h=Math.round(h*m/w);w=m;}else{w=Math.round(w*m/h);h=m;} }
         const c=document.createElement('canvas');
         [c.width,c.height]=[w,h];
         c.getContext('2d').drawImage(img,0,0,w,h);
-        res(c.toDataURL('image/jpeg',.55)); // 품질 낮춰서 용량 절감
+        res(c.toDataURL('image/jpeg',.6));
       };
       img.src=e.target.result;
     };
@@ -259,163 +256,179 @@ function resizeImg(file){
   });
 }
 
-// ── 공통 유틸 ──────────────────────────────────────
-function myCases(){ return S.role==='farmer'? S.cases.filter(c=>c.farmerName===S.userName): S.cases; }
+// ── 공통 유틸 ─────────────────────────────────
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function sbadge(st){ return `<span class="badge ${st==='pending'?'bp':'br'}">${st==='pending'?'대기 중':'완료'}</span>`; }
+function myCases(){ return S.cases.filter(c=>c.farmerName===S.userName); }
 
-// ── 렌더링 ─────────────────────────────────────────
+// ── 렌더 ──────────────────────────────────────
 function render(){
-  const root=document.getElementById('root');
-  const screens={welcome:rWelcome,login:rLogin,farmer:rFarmer,expert:rExpert,submit:rSubmit,detail:rDetail};
-  root.innerHTML=(screens[S.screen]||rWelcome)();
+  document.getElementById('root').innerHTML = buildHTML();
   bind();
 }
 
-// ── 환영 화면 ──────────────────────────────────────
-function rWelcome(){return`
-<div class="s-welcome">
-  <div class="w-hero">
-    <div class="w-icon">🐔</div>
-    <h1 class="w-title">닭 질병 진단 시스템</h1>
-    <p class="w-sub">가금류 질병 전문가 상담 플랫폼</p>
-  </div>
-  <div class="role-cards">
-    <button class="role-card" data-a="login" data-role="farmer"><span class="re">🌾</span><span class="rl">농가</span><span class="rd">사진 촬영 및 진단 요청</span></button>
-    <button class="role-card" data-a="login" data-role="expert"><span class="re">🩺</span><span class="rl">전문가</span><span class="rd">진단 검토 및 처방 작성</span></button>
-  </div>
-  <p class="w-note">사진을 전문가에게 전송하고 진단 결과를 받으세요</p>
-</div>`;}
+function buildHTML(){
+  // 이름 없으면 모달
+  const modal = (!S.userName || S.showNameModal) ? `
+    <div class="modal-bg" data-a="modal-bg">
+      <div class="modal">
+        <div class="modal-icon">🐔</div>
+        <div class="modal-title">닭 질병 진단 시스템</div>
+        <div class="modal-sub">이름 또는 농장명을 입력하세요</div>
+        <input class="modal-input" id="name-input" type="text"
+          placeholder="예: 행복한 농장 / 김수의사"
+          value="${esc(localStorage.getItem('ckdx_name')||'')}"
+          autocomplete="off"/>
+        <button class="modal-btn" id="name-btn">확인</button>
+      </div>
+    </div>` : '';
 
-// ── 로그인 화면 ────────────────────────────────────
-function rLogin(){
-  const f=S.role==='farmer';
-  const acc=f?'#1B5E20':'#0D47A1';
-  const bg=f?'linear-gradient(155deg,#071a0c,#1B5E20)':'linear-gradient(155deg,#06071f,#0D47A1)';
-  return`
-<div class="s-login" style="background:${bg}">
-  <div class="login-card">
-    <button class="back-btn" data-a="back-w">← 뒤로</button>
-    <div class="l-header">
-      <div class="l-emoji">${f?'🌾':'🩺'}</div>
-      <div class="l-title" style="color:${acc}">${f?'농가 로그인':'전문가 로그인'}</div>
-      <div class="l-sub">${f?'농장 이름을 입력하세요':'성함을 입력하세요'}</div>
+  // 서브스크린 (제출/상세)
+  if(S.screen==='submit') return modal + rSubmit();
+  if(S.screen==='detail' && S.sel) return modal + rDetail();
+
+  // 메인
+  const myC=myCases(), pen=myC.filter(c=>c.status==='pending'), rev=myC.filter(c=>c.status==='reviewed');
+  const allPen=S.cases.filter(c=>c.status==='pending');
+  const allRev=S.cases.filter(c=>c.status==='reviewed');
+
+  const farmerContent = `
+    <div class="stats">
+      <div class="stat"><div class="sv" style="color:#37474F">${myC.length}</div><div class="sl">내 요청</div></div>
+      <div class="stat"><div class="sv" style="color:#FB8C00">${pen.length}</div><div class="sl">대기 중</div></div>
+      <div class="stat"><div class="sv" style="color:#2E7D32">${rev.length}</div><div class="sl">완료</div></div>
     </div>
-    <input class="txt-input" id="ni" type="text" placeholder="${f?'예: 행복한 농장':'예: 김수의사'}" autocomplete="off" onfocus="this.style.borderColor='${acc}'" onblur="this.style.borderColor='#E0E0E0'" />
-    <button class="pri-btn" data-a="do-login" style="background:${acc}">시작하기</button>
-  </div>
-</div>`;}
+    <button class="green-btn" data-a="go-submit">📷&nbsp;&nbsp;새 진단 요청하기</button>
+    ${S.replyBadge>0?`<div class="reply-alert" data-a="clr-badge">
+      <span>🔔</span><span class="reply-txt">전문가 답변 ${S.replyBadge}건이 도착했습니다!</span>
+    </div>`:''}
+    <div class="case-list">
+      ${myC.length===0
+        ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">아직 진단 요청이 없습니다.<br/>위 버튼을 눌러 요청하세요.</div></div>`
+        :myC.map(c=>`
+        <div class="case-card ${c.status}" data-a="open" data-id="${c.id}">
+          <div class="ci"><div class="cbadges">${sbadge(c.status)}</div>
+            <div class="cdesc">${esc(c.description)}</div>
+            <div class="cdate">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
+          </div><div class="carrow">›</div>
+        </div>`).join('')}
+    </div>`;
 
-// ── 농가 대시보드 ──────────────────────────────────
-function rFarmer(){
-  const my=myCases(), pen=my.filter(c=>c.status==='pending'), rev=my.filter(c=>c.status==='reviewed');
-  return`
-<div style="background:#F0F7F0;min-height:100vh">
-  <div class="app-hdr" style="background:#1B5E20">
-    <div class="hdr-l">
-      <span class="hdr-title">🌾 ${esc(S.userName)}</span>
-      ${S.replyBadge>0?`<span class="nbadge">${S.replyBadge}</span>`:''}
+  const expertContent = `
+    <div class="stats">
+      <div class="stat"><div class="sv" style="color:#FB8C00">${allPen.length}</div><div class="sl">대기 중</div></div>
+      <div class="stat"><div class="sv" style="color:#2E7D32">${allRev.length}</div><div class="sl">완료</div></div>
+      <div class="stat"><div class="sv" style="color:#37474F">${S.cases.length}</div><div class="sl">전체</div></div>
     </div>
-    <button class="lgout" data-a="logout">로그아웃</button>
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="sv" style="color:#37474F">${my.length}</div><div class="sl">총 요청</div></div>
-    <div class="stat"><div class="sv" style="color:#FB8C00">${pen.length}</div><div class="sl">대기 중</div></div>
-    <div class="stat"><div class="sv" style="color:#2E7D32">${rev.length}</div><div class="sl">진단 완료</div></div>
-  </div>
-  <button class="green-btn" data-a="go-sub">📷&nbsp;&nbsp;새 진단 요청하기</button>
-  ${S.replyBadge>0?`<div class="ralert" data-a="clr-badge"><span>🔔</span><span class="ralert-txt">전문가 진단 ${S.replyBadge}건이 도착했습니다!</span></div>`:''}
-  <div class="case-list">
-    ${my.length===0
-      ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">아직 진단 요청이 없습니다.<br/>위 버튼을 눌러 진단을 요청하세요.</div></div>`
-      :my.map(c=>`
-      <div class="case-card ${c.status}" data-a="open" data-id="${c.id}">
-        <div class="ci"><div class="cbadges">${sbadge(c.status)}</div>
-          <div class="cdesc">${esc(c.description)}</div>
-          <div class="cdate">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
-        </div><div class="carrow">›</div>
-      </div>`).join('')}
-  </div>
-</div>`;}
+    ${allPen.length>0?`
+      <div class="shdr"><span class="shdr-t">🔔 검토 대기</span>
+        <span class="shdr-c" style="background:#FFF3E0;color:#FB8C00">${allPen.length}</span></div>
+      <div class="case-list" style="padding-top:0">
+        ${allPen.map(c=>`
+        <div class="case-card pending" data-a="open" data-id="${c.id}">
+          <div class="ci"><div class="cfarmer">🌾 ${esc(c.farmerName)}</div>
+            <div class="cbadges">${sbadge(c.status)}</div>
+            <div class="cdesc">${esc(c.description)}</div>
+            <div class="cdate">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
+          </div><div class="carrow">›</div>
+        </div>`).join('')}
+      </div>`:''}
+    ${allRev.length>0?`
+      <div class="shdr" style="margin-top:${allPen.length?4:0}px"><span class="shdr-t">✅ 진단 완료</span>
+        <span class="shdr-c" style="background:#E8F5E9;color:#2E7D32">${allRev.length}</span></div>
+      <div class="case-list" style="padding-top:0">
+        ${allRev.map(c=>`
+        <div class="case-card reviewed" data-a="open" data-id="${c.id}">
+          <div class="ci"><div class="cfarmer">🌾 ${esc(c.farmerName)}</div>
+            <div class="cbadges">${sbadge(c.status)}</div>
+            <div class="cdesc">${esc(c.description)}</div>
+            <div class="cdate">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
+          </div><div class="carrow">›</div>
+        </div>`).join('')}
+      </div>`:''}
+    ${S.cases.length===0?`<div class="empty"><div class="empty-icon">📭</div><div class="empty-txt">진단 요청이 없습니다.<br/>농가에서 요청하면 여기에 표시됩니다.</div></div>`:''}`;
 
-// ── 전문가 대시보드 ────────────────────────────────
-function rExpert(){
-  const all=myCases(), pen=all.filter(c=>c.status==='pending'), rev=all.filter(c=>c.status==='reviewed');
-  const cards=list=>list.map(c=>`
-    <div class="case-card ${c.status}" data-a="open" data-id="${c.id}">
-      <div class="ci">
-        <div class="cfarmer">🌾 ${esc(c.farmerName)}</div>
-        <div class="cbadges" style="margin-top:5px">${sbadge(c.status)}</div>
-        <div class="cdesc">${esc(c.description)}</div>
-        <div class="cdate">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
-      </div><div class="carrow">›</div>
-    </div>`).join('');
-  return`
-<div style="background:#F0F7F0;min-height:100vh">
-  <div class="app-hdr" style="background:#0D47A1">
-    <div class="hdr-l">
-      <span class="hdr-title">🩺 ${esc(S.userName)} 선생님</span>
-      ${S.pendingBadge>0?`<span class="nbadge">${S.pendingBadge}</span>`:''}
-    </div>
-    <button class="lgout" data-a="logout">로그아웃</button>
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="sv" style="color:#FB8C00">${pen.length}</div><div class="sl">대기 중</div></div>
-    <div class="stat"><div class="sv" style="color:#2E7D32">${rev.length}</div><div class="sl">진단 완료</div></div>
-    <div class="stat"><div class="sv" style="color:#37474F">${all.length}</div><div class="sl">전체</div></div>
-  </div>
-  ${all.length===0?`<div class="empty"><div class="empty-icon">📭</div><div class="empty-txt">아직 진단 요청이 없습니다.<br/>농가에서 요청하면 여기에 표시됩니다.</div></div>`:''}
-  ${pen.length>0?`<div class="shdr"><span class="shdr-t">🔔 검토 대기</span><span class="shdr-c" style="background:#FFF3E0;color:#FB8C00">${pen.length}</span></div><div class="case-list" style="padding-top:0">${cards(pen)}</div>`:''}
-  ${rev.length>0?`<div class="shdr" style="margin-top:${pen.length?8:0}px"><span class="shdr-t">✅ 진단 완료</span><span class="shdr-c" style="background:#E8F5E9;color:#2E7D32">${rev.length}</span></div><div class="case-list" style="padding-top:0">${cards(rev)}</div>`:''}
-</div>`;}
-
-// ── 제출 화면 ──────────────────────────────────────
-function rSubmit(){
-  const ok=!!S.newPhotoUrl&&S.desc.trim().length>0&&!S.submitting;
-  const photoHtml=S.newPhotoUrl?`
-    <div class="photo-area hp"><img src="${S.newPhotoUrl}" alt="사진"/>
-      ${!S.submitting?`<button class="clr-photo" data-a="clr-photo">✕</button>`:''}</div>
-    ${!S.submitting?`<div class="photo-btns">
-      <label for="pi-cam" class="photo-btn photo-btn-cam">📷 카메라 재촬영</label>
-      <label for="pi-gal" class="photo-btn photo-btn-gal">🖼️ 갤러리 선택</label>
-    </div>`:''}`:`
-    <div class="photo-area" style="cursor:default;min-height:120px">
-      <div class="pp"><div class="pp-icon">📷</div>
-        <div class="pp-hint">아래 버튼으로 사진을 선택하세요</div>
-        <div class="pp-sub">닭의 이상 부위가 잘 보이도록 찍어주세요</div>
+  return `${modal}
+    <div class="top-hdr">
+      <span class="app-name">🐔 닭 질병 진단</span>
+      <div class="user-chip" data-a="change-name">
+        👤 ${esc(S.userName||'이름 입력')}
       </div>
     </div>
-    <div class="photo-btns">
-      <label for="pi-cam" class="photo-btn photo-btn-cam">📷 카메라 촬영</label>
-      <label for="pi-gal" class="photo-btn photo-btn-gal">🖼️ 갤러리 선택</label>
-    </div>`;
-  return`
-<div style="background:#F0F7F0;min-height:100vh;display:flex;flex-direction:column">
-  <div class="app-hdr" style="background:#1B5E20">
-    <div class="hdr-l">
-      ${!S.submitting?`<button class="hdr-back" data-a="back-f">←</button>`:''}
-      <span class="hdr-title">📷 진단 요청</span>
+    <div class="tab-bar">
+      <button class="tab ${S.tab==='farmer'?'active':''}" data-a="tab" data-tab="farmer">
+        <span class="tab-icon">🌾</span>
+        <span class="tab-label">농가</span>
+        ${S.replyBadge>0?`<span class="tab-badge">${S.replyBadge}</span>`:''}
+        <div class="tab-indicator"></div>
+      </button>
+      <button class="tab ${S.tab==='expert'?'active':''}" data-a="tab" data-tab="expert">
+        <span class="tab-icon">🩺</span>
+        <span class="tab-label">전문가</span>
+        ${S.pendingBadge>0?`<span class="tab-badge">${S.pendingBadge}</span>`:''}
+        <div class="tab-indicator"></div>
+      </button>
     </div>
-  </div>
-  <div class="scr-scroll">
-    ${photoHtml}
-    <label class="fl">증상 설명 <span class="fr">*</span></label>
-    <textarea class="textarea" id="di" placeholder="닭의 증상을 자세히 설명해주세요.&#10;예: 3일 전부터 먹이를 안 먹고, 깃털이 부풀어 있으며 설사를 합니다." ${S.submitting?'disabled':''}>${esc(S.desc)}</textarea>
-    <button class="sub-btn" data-a="submit" ${ok?'':'disabled'}>
-      ${S.submitting?`<div class="loading-row"><div class="spin"></div><span>전송 중...</span></div>`:'📤&nbsp;&nbsp;전문가에게 진단 요청하기'}
-    </button>
-    <div class="sub-note">사진과 증상을 전문가에게 전송합니다.<br/>전문가가 진단 후 결과를 알려드립니다.</div>
-    <div class="spacer"></div>
-  </div>
-</div>`;}
+    <div class="content">
+      ${S.tab==='farmer' ? farmerContent : expertContent}
+    </div>`;
+}
 
-// ── 상세 화면 ──────────────────────────────────────
+// ── 제출 화면 ─────────────────────────────────
+function rSubmit(){
+  const ok=!!S.newPhotoUrl&&S.desc.trim().length>0&&!S.submitting;
+  return`
+  <div class="subscreen">
+    <div class="sub-hdr">
+      ${!S.submitting?`<button class="back-btn" data-a="back">←</button>`:''}
+      <span class="sub-title">📷 진단 요청</span>
+    </div>
+    <div class="sub-scroll">
+      ${S.newPhotoUrl?`
+        <img class="photo-preview" src="${S.newPhotoUrl}" alt="사진"/>
+        ${!S.submitting?`<button class="clr-photo" data-a="clr-photo">✕ 사진 삭제</button>`:''}
+      `:''}
+      ${!S.submitting?`
+      <div class="photo-btns">
+        <label for="pi-cam" class="photo-btn pbtn-cam">📷 카메라 촬영</label>
+        <label for="pi-gal" class="photo-btn pbtn-gal">🖼️ 갤러리 선택</label>
+      </div>`:''}
+      <label class="field-label">증상 설명 <span class="req">*</span></label>
+      <textarea class="textarea" id="di"
+        placeholder="닭의 증상을 자세히 설명해주세요.&#10;예: 3일 전부터 먹이를 안 먹고 깃털이 부풀어 있으며 설사를 합니다."
+        ${S.submitting?'disabled':''}>${esc(S.desc)}</textarea>
+      <button class="submit-btn" data-a="submit" ${ok?'':'disabled'}>
+        ${S.submitting
+          ?`<div class="loading-row"><div class="spin"></div><span>전송 중...</span></div>`
+          :'📤&nbsp;&nbsp;전문가에게 진단 요청하기'}
+      </button>
+      <div class="sub-note">사진과 증상을 전문가에게 전송합니다.</div>
+      <div class="spacer"></div>
+    </div>
+  </div>`;}
+
+// ── 상세 화면 ─────────────────────────────────
 function rDetail(){
-  const c=S.sel; if(!c) return '<div style="padding:32px;text-align:center">불러오는 중...</div>';
-  const f=S.role==='farmer', acc=f?'#1B5E20':'#0D47A1', rev=c.status==='reviewed';
-
-  const expSec = f
-    ?(rev
+  const c=S.sel, isExp=S.tab==='expert', rev=c.status==='reviewed';
+  const expSec = isExp
+    ?(rev&&c.expertComment
+      ?`<div class="section">
+          <div class="s-title">🩺 내 진단 내용</div>
+          <div class="s-body">
+            <div class="rev-comment"><div class="exp-comment" style="color:#1A237E">${esc(c.expertComment)}</div></div>
+            <div class="done-note">✅ 완료된 케이스입니다.</div>
+          </div></div>`
+      :`<div class="section">
+          <div class="s-title">🩺 진단 내용 작성</div>
+          <div class="s-body">
+            <textarea class="comment-area" id="ci"
+              placeholder="진단 내용, 치료 방법, 예방 지침을 작성해주세요."
+              ${S.saving?'disabled':''}>${esc(S.comment)}</textarea>
+            <button class="exp-btn" data-a="do-comment" ${(S.comment.trim()&&!S.saving)?'':'disabled'}>
+              ${S.saving?`<div class="loading-row"><div class="spin"></div><span>전송 중...</span></div>`:'✅&nbsp;&nbsp;진단 완료 및 농가에 전송'}
+            </button>
+          </div></div>`)
+    :(rev
       ?`<div class="section acc">
           <div class="s-title">🩺 전문가 진단</div>
           <div class="s-sub">${esc(c.expertName)} 선생님</div>
@@ -424,84 +437,93 @@ function rDetail(){
       :`<div class="wait-box">
           <div class="wait-icon">⏳</div>
           <div class="wait-title">전문가 진단을 기다리는 중입니다</div>
-          <div class="wait-desc">진단이 완료되면 이 화면에 자동으로 표시됩니다</div>
-        </div>`)
-    :(rev&&c.expertComment
-      ?`<div class="section">
-          <div class="s-title">🩺 내 진단 내용</div>
-          <div class="s-body">
-            <div class="rev-comment"><div class="exp-comment" style="color:#1A237E">${esc(c.expertComment)}</div></div>
-            <div class="done-note">✅ 진단이 완료된 케이스입니다.</div>
-          </div>
-        </div>`
-      :`<div class="section">
-          <div class="s-title">🩺 진단 내용 작성</div>
-          <div class="s-body">
-            <textarea class="comment-area" id="ci" placeholder="진단 내용, 치료 방법, 예방 지침을 상세히 작성해주세요.&#10;예: 뉴캐슬병으로 의심됩니다. 즉시 격리 후..." ${S.saving?'disabled':''}>${esc(S.comment)}</textarea>
-            <button class="exp-btn" data-a="do-comment" ${(S.comment.trim()&&!S.saving)?'':'disabled'}>
-              ${S.saving?`<div class="loading-row"><div class="spin"></div><span>전송 중...</span></div>`:'✅&nbsp;&nbsp;진단 완료 및 농가에 전송'}
-            </button>
-          </div>
+          <div class="wait-desc">진단 완료 시 자동으로 표시됩니다</div>
         </div>`);
   return`
-<div style="background:#F0F7F0;min-height:100vh;display:flex;flex-direction:column">
-  <div class="app-hdr" style="background:${acc}">
-    <div class="hdr-l">
-      <button class="hdr-back" data-a="back-dash">←</button>
-      <span class="hdr-title">${f?'📋 진단 결과':'🩺 진단 작성'}</span>
+  <div class="subscreen">
+    <div class="sub-hdr ${isExp?'expert':''}">
+      <button class="back-btn" data-a="back">←</button>
+      <span class="sub-title">${isExp?'🩺 진단 작성':'📋 진단 결과'}</span>
+      ${sbadge(c.status)}
     </div>
-    ${sbadge(c.status)}
-  </div>
-  <div class="scr-scroll">
-    ${c.photoUrl?`<img class="det-photo" src="${c.photoUrl}" alt="케이스 사진"/>`:`<div class="photo-loading">사진 불러오는 중...</div>`}
-    <div class="det-meta">
-      <div class="det-farmer">🌾 ${esc(c.farmerName)}</div>
-      <div class="det-date">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
+    <div class="sub-scroll">
+      ${c.photoUrl
+        ?`<img class="det-photo" src="${c.photoUrl}" alt="사진"/>`
+        :`<div class="photo-loading">사진 불러오는 중...</div>`}
+      <div class="det-meta">
+        <div class="det-farmer">🌾 ${esc(c.farmerName)}</div>
+        <div class="det-date">${new Date(c.createdAt).toLocaleString('ko-KR')}</div>
+      </div>
+      <div class="section">
+        <div class="s-title">📝 증상 설명</div>
+        <div class="s-body">${esc(c.description)}</div>
+      </div>
+      ${expSec}
+      <div class="spacer"></div>
     </div>
-    <div class="section">
-      <div class="s-title">📝 증상 설명</div>
-      <div class="s-body"><div class="ival" style="margin:0">${esc(c.description)}</div></div>
-    </div>
-    ${expSec}
-    <div class="spacer"></div>
-  </div>
-</div>`;}
+  </div>`;}
 
-// ── 이벤트 바인딩 ──────────────────────────────────
+// ── 이벤트 바인딩 ─────────────────────────────
 function bind(){
   document.getElementById('root').addEventListener('click', async e=>{
     const el=e.target.closest('[data-a]'); if(!el) return;
     const a=el.dataset.a;
-    if     (a==='login')      set({role:el.dataset.role,screen:'login'});
-    else if(a==='back-w')     set({screen:'welcome',role:null});
-    else if(a==='do-login')  { const v=document.getElementById('ni')?.value?.trim(); if(v){set({userName:v,screen:S.role});listen();} }
-    else if(a==='logout')    { if(S.unsub)S.unsub(); set({screen:'welcome',role:null,userName:'',cases:[],replyBadge:0,pendingBadge:0,prevReviewed:new Set(),unsub:null}); }
-    else if(a==='go-sub')     set({screen:'submit',newPhotoUrl:null,desc:''});
-    else if(a==='back-f')     set({screen:'farmer'});
-    else if(a==='back-dash')  set({screen:S.role,sel:null,comment:''});
-    else if(a==='clr-photo')  set({newPhotoUrl:null});
-    else if(a==='submit')    { S.desc=document.getElementById('di')?.value||S.desc; await doSubmit(); }
-    else if(a==='do-comment'){ S.comment=document.getElementById('ci')?.value||S.comment; await doComment(); }
-    else if(a==='open')      { const f=S.cases.find(c=>c.id===el.dataset.id); if(f) set({sel:f,screen:'detail',comment:''}); }
-    else if(a==='clr-badge')  set({replyBadge:0});
+    if(a==='tab')         { set({tab:el.dataset.tab, replyBadge: el.dataset.tab==='farmer'?S.replyBadge:S.replyBadge}); }
+    else if(a==='go-submit')   { if(!S.userName){set({showNameModal:true});return;} set({screen:'submit',newPhotoUrl:null,desc:''}); }
+    else if(a==='back')        { set({screen:null,sel:null,comment:''}); }
+    else if(a==='clr-photo')   { set({newPhotoUrl:null}); }
+    else if(a==='submit')      { S.desc=document.getElementById('di')?.value||S.desc; await doSubmit(); }
+    else if(a==='do-comment')  { S.comment=document.getElementById('ci')?.value||S.comment; await doComment(); }
+    else if(a==='open')        { const f=S.cases.find(c=>c.id===el.dataset.id); if(f) set({sel:f,screen:'detail',comment:''}); }
+    else if(a==='clr-badge')   { set({replyBadge:0}); }
+    else if(a==='change-name') { set({showNameModal:true}); }
+    else if(a==='modal-bg')    { if(e.target===el && S.userName) set({showNameModal:false}); }
   });
 
-  const ni=document.getElementById('ni');
-  if(ni){ ni.focus(); ni.addEventListener('keydown',e=>{ if(e.key==='Enter'){const v=e.target.value.trim();if(v){set({userName:v,screen:S.role});listen();}} }); }
+  // 이름 입력
+  const ni=document.getElementById('name-input');
+  const nb=document.getElementById('name-btn');
+  if(ni){
+    setTimeout(()=>ni.focus(),100);
+    ni.addEventListener('keydown',e=>{ if(e.key==='Enter') saveName(ni.value); });
+  }
+  if(nb) nb.addEventListener('click',()=>saveName(document.getElementById('name-input')?.value||''));
 
+  // textarea 동기화
   const di=document.getElementById('di');
-  if(di) di.addEventListener('input',e=>{ S.desc=e.target.value; const b=document.querySelector('[data-a="submit"]'); if(b) b.disabled=!e.target.value.trim()||!S.newPhotoUrl||S.submitting; });
-
+  if(di) di.addEventListener('input',e=>{
+    S.desc=e.target.value;
+    const b=document.querySelector('[data-a="submit"]');
+    if(b) b.disabled=!e.target.value.trim()||!S.newPhotoUrl||S.submitting;
+  });
   const ci=document.getElementById('ci');
-  if(ci) ci.addEventListener('input',e=>{ S.comment=e.target.value; const b=document.querySelector('[data-a="do-comment"]'); if(b) b.disabled=!e.target.value.trim()||S.saving; });
+  if(ci) ci.addEventListener('input',e=>{
+    S.comment=e.target.value;
+    const b=document.querySelector('[data-a="do-comment"]');
+    if(b) b.disabled=!e.target.value.trim()||S.saving;
+  });
 
-  const pi1=document.getElementById('pi-cam');
-  const pi2=document.getElementById('pi-gal');
-  async function handleFile(e){ const f=e.target.files[0]; if(!f)return; const url=await resizeImg(f); set({newPhotoUrl:url}); e.target.value=''; }
-  if(pi1&&!pi1._bound){ pi1._bound=true; pi1.addEventListener('change',handleFile); }
-  if(pi2&&!pi2._bound){ pi2._bound=true; pi2.addEventListener('change',handleFile); }
+  // 사진 입력
+  ['pi-cam','pi-gal'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&!el._bound){ el._bound=true; el.addEventListener('change',async e=>{
+      const f=e.target.files[0]; if(!f)return;
+      const url=await resizeImg(f); set({newPhotoUrl:url}); e.target.value='';
+    });}
+  });
 }
 
+function saveName(val){
+  const v=val.trim();
+  if(!v) return;
+  localStorage.setItem('ckdx_name',v);
+  S.userName=v; S.showNameModal=false;
+  if(!S.unsub) startListen();
+  render();
+}
+
+// ── 시작 ──────────────────────────────────────
+if(S.userName) startListen();
 render();
 </script>
 </body>
