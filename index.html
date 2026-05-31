@@ -224,7 +224,8 @@ const roleChipCls = r => ({farmer:'chip-green', vet:'chip-blue', admin:'chip-gra
 let _registering = false;
 let _posting = false;
 let _commenting = false;
-let _mainStarted = false; // 메인 리스너 중복 실행 방지
+let _mainStarted = false;
+let _clickBound = false; // 클릭 리스너 중복 방지
 onAuthStateChanged(auth, user => {
   if(user){
     S.authUser = user;
@@ -744,40 +745,44 @@ function rNewPost(){
 
 // ── 이벤트 바인딩 ─────────────────────────────
 function bindEvents(){
-  document.getElementById('root').addEventListener('click', async e=>{
-    const el=e.target.closest('[data-a]'); if(!el) return;
-    const a=el.dataset.a;
+  // 클릭 리스너는 최초 1회만 등록
+  if(!_clickBound){
+    _clickBound = true;
+    document.getElementById('root').addEventListener('click', async e=>{
+      const el=e.target.closest('[data-a]'); if(!el) return;
+      const a=el.dataset.a;
 
-    if(a==='auth-tab')        set({screen:el.dataset.tab,lErr:'',rErr:''});
-    else if(a==='set-role')   set({rRole:el.dataset.role});
-    else if(a==='do-login')   { syncLoginForm(); await doLogin(); }
-    else if(a==='do-register'){ syncRegisterForm(); await doRegister(); }
-    else if(a==='logout')     { await signOut(auth); }
-    else if(a==='tab')        set({mainTab:el.dataset.tab});
-    else if(a==='go-new-post') set({screen:'newPost',npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
-    else if(a==='close-new-post') set({screen:'main',showVetSelect:false});
-    else if(a==='toggle-vet-select') set({showVetSelect:!S.showVetSelect});
-    else if(a==='select-vet') {
-      set({npTargetVetId:el.dataset.id||null,npTargetVetName:el.dataset.name||'',showVetSelect:false});
-    }
-    else if(a==='clear-vet')  set({npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
-    else if(a==='do-post')    { syncNewPostForm(); await doPost(); }
-    else if(a==='open-post')  {
-      const p=S.posts.find(x=>x.id===el.dataset.id);
-      if(p){ set({selPost:p,screen:'postDetail',comments:[],newComment:''}); startCommentsListener(p.id); }
-    }
-    else if(a==='close-post') {
-      if(S._unsubComments){S._unsubComments();S._unsubComments=null;}
-      set({screen:'main',selPost:null,comments:[]});
-    }
-    else if(a==='do-comment') { syncComment(); await doComment(); }
-    else if(a==='approve')    await doApprove(el.dataset.uid,true);
-    else if(a==='reject')     await doApprove(el.dataset.uid,false);
-    else if(a==='ask-vet')    {
-      set({screen:'newPost',npTargetVetId:el.dataset.id,npTargetVetName:el.dataset.name,
-           npTitle:'',npContent:'',showVetSelect:false,mainTab:'board'});
-    }
-  });
+      if(a==='auth-tab')        set({screen:el.dataset.tab,lErr:'',rErr:''});
+      else if(a==='set-role')   set({rRole:el.dataset.role});
+      else if(a==='do-login')   { syncLoginForm(); await doLogin(); }
+      else if(a==='do-register'){ syncRegisterForm(); await doRegister(); }
+      else if(a==='logout')     { _mainStarted=false; await signOut(auth); }
+      else if(a==='tab')        set({mainTab:el.dataset.tab});
+      else if(a==='go-new-post') set({screen:'newPost',npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
+      else if(a==='close-new-post') set({screen:'main',showVetSelect:false});
+      else if(a==='toggle-vet-select') set({showVetSelect:!S.showVetSelect});
+      else if(a==='select-vet') {
+        set({npTargetVetId:el.dataset.id||null,npTargetVetName:el.dataset.name||'',showVetSelect:false});
+      }
+      else if(a==='clear-vet')  set({npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
+      else if(a==='do-post')    { syncNewPostForm(); await doPost(); }
+      else if(a==='open-post')  {
+        const p=S.posts.find(x=>x.id===el.dataset.id);
+        if(p){ set({selPost:p,screen:'postDetail',comments:[],newComment:''}); startCommentsListener(p.id); }
+      }
+      else if(a==='close-post') {
+        if(S._unsubComments){S._unsubComments();S._unsubComments=null;}
+        set({screen:'main',selPost:null,comments:[]});
+      }
+      else if(a==='do-comment') { syncComment(); await doComment(); }
+      else if(a==='approve')    await doApprove(el.dataset.uid,true);
+      else if(a==='reject')     await doApprove(el.dataset.uid,false);
+      else if(a==='ask-vet')    {
+        set({screen:'newPost',npTargetVetId:el.dataset.id,npTargetVetName:el.dataset.name,
+             npTitle:'',npContent:'',showVetSelect:false,mainTab:'board'});
+      }
+    });
+  }
 
   // 엔터키 로그인
   document.getElementById('l-pass')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){syncLoginForm();doLogin();} });
