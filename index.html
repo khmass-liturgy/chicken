@@ -544,7 +544,7 @@ function bind(){
   if(di) di.addEventListener('input',e=>{
     S.desc=e.target.value;
     const b=document.querySelector('[data-a="submit"]');
-    if(b) b.disabled=!e.target.value.trim()||!S.newPhotoUrl||S.submitting;
+    if(b) b.disabled=!e.target.value.trim()||S.submitting;
   });
   const ci=document.getElementById('ci');
   if(ci) ci.addEventListener('input',e=>{
