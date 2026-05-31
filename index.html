@@ -315,19 +315,28 @@ function refreshVets(){
     .then(snap=>{ S.vets=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
 }
 
+async function loadComments(postId){
+  if(!postId) return;
+  try{
+    const snap = await getDocs(collection(db,'comments'));
+    S.comments = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .filter(c=>c.postId===postId)
+      .sort((a,b)=>a.createdAt - b.createdAt);
+    render();
+  }catch(e){
+    console.error('댓글 로드 오류:', e);
+  }
+}
+
 function startCommentsListener(postId){
-  if(S._unsubComments) S._unsubComments();
-  // orderBy 제거 → 복합 색인 불필요, 클라이언트에서 정렬
-  S._unsubComments = onSnapshot(
-    query(collection(db,'comments'), where('postId','==',postId)),
-    snap=>{
-      S.comments = snap.docs
-        .map(d=>({id:d.id,...d.data()}))
-        .sort((a,b)=>a.createdAt - b.createdAt);
-      render();
-    },
-    err=>{ console.error('댓글 오류:', err); }
-  );
+  if(S._unsubComments){ S._unsubComments(); S._unsubComments=null; }
+  // 즉시 로드
+  loadComments(postId);
+  // 실시간 감지 (컬렉션 전체)
+  S._unsubComments = onSnapshot(collection(db,'comments'), ()=>{
+    loadComments(postId);
+  });
 }
 
 // ── Auth 액션 ─────────────────────────────────
@@ -418,6 +427,8 @@ async function doComment(){
     await updateDoc(doc(db,'posts',S.selPost.id),{commentCount:(S.selPost.commentCount||0)+1});
     set({commenting:false,newComment:''});
     _commenting = false;
+    // 댓글 즉시 새로고침
+    loadComments(S.selPost.id);
   }catch(e){
     alert('오류: '+e.message);
     _commenting = false;
