@@ -769,9 +769,15 @@ function bindEvents(){
     if(b) b.disabled=!e.target.value.trim()||S.commenting;
   });}
 
-  // 새 글 textarea 동기화
-  document.getElementById('np-title')?.addEventListener('input',e=>S.npTitle=e.target.value);
-  document.getElementById('np-content')?.addEventListener('input',e=>S.npContent=e.target.value);
+  // 새 글 입력 동기화 + 버튼 활성화
+  const npTitle = document.getElementById('np-title');
+  const npContent = document.getElementById('np-content');
+  function updatePostBtn(){
+    const b = document.querySelector('[data-a="do-post"]');
+    if(b) b.disabled = !S.npTitle.trim() || !S.npContent.trim() || S.npPosting;
+  }
+  if(npTitle){ npTitle.addEventListener('input',e=>{ S.npTitle=e.target.value; updatePostBtn(); }); }
+  if(npContent){ npContent.addEventListener('input',e=>{ S.npContent=e.target.value; updatePostBtn(); }); }
 }
 
 function syncLoginForm(){
