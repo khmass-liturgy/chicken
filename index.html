@@ -189,6 +189,15 @@ function listen(){
 async function doSubmit(){
   if(!S.newPhotoUrl||!S.desc.trim()||S.submitting) return;
   set({submitting:true});
+
+  // 15초 타임아웃
+  let timedOut = false;
+  const timer = setTimeout(()=>{
+    timedOut = true;
+    set({submitting:false});
+    alert('⏱️ 연결 시간 초과\n\n아래를 확인해 주세요:\n1. Firebase 설정값이 맞는지 확인\n2. Firestore 데이터베이스가 생성되었는지 확인\n3. 인터넷 연결 확인');
+  }, 15000);
+
   try{
     await addDoc(collection(db,'cases'),{
       farmerName: S.userName,
@@ -200,10 +209,14 @@ async function doSubmit(){
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    set({submitting:false, newPhotoUrl:null, desc:'', screen:'farmer'});
+    clearTimeout(timer);
+    if(!timedOut) set({submitting:false, newPhotoUrl:null, desc:'', screen:'farmer'});
   }catch(e){
-    alert('저장 오류: '+e.message);
-    set({submitting:false});
+    clearTimeout(timer);
+    if(!timedOut){
+      set({submitting:false});
+      alert('❌ 저장 오류\n\n'+e.message+'\n\nFirestore 데이터베이스가 생성되어 있는지 확인해 주세요.');
+    }
   }
 }
 
@@ -233,12 +246,12 @@ function resizeImg(file){
       const img = new Image();
       img.onload = ()=>{
         let {width:w,height:h}=img;
-        const m=800;
+        const m=600; // 작게 줄여서 Firestore 용량 절감
         if(w>m||h>m){ if(w>h){h=Math.round(h*m/w);w=m;}else{w=Math.round(w*m/h);h=m;} }
         const c=document.createElement('canvas');
         [c.width,c.height]=[w,h];
         c.getContext('2d').drawImage(img,0,0,w,h);
-        res(c.toDataURL('image/jpeg',.65));
+        res(c.toDataURL('image/jpeg',.55)); // 품질 낮춰서 용량 절감
       };
       img.src=e.target.result;
     };
