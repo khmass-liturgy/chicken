@@ -157,8 +157,8 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-seri
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot,
-         query, orderBy, where, getDocs, setDoc, getDoc }
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
+         onSnapshot, getDocs, setDoc, getDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          onAuthStateChanged, signOut }
@@ -436,7 +436,23 @@ async function doComment(){
   }
 }
 
-// ── 관리자 액션 ───────────────────────────────
+// ── 게시글 삭제 ───────────────────────────────
+async function doDeletePost(postId){
+  if(!confirm('이 게시글을 삭제하시겠습니까?\n댓글도 함께 삭제됩니다.')) return;
+  try{
+    // 댓글 함께 삭제
+    const commentsSnap = await getDocs(collection(db,'comments'));
+    const toDelete = commentsSnap.docs.filter(d=>d.data().postId===postId);
+    await Promise.all(toDelete.map(d=>deleteDoc(doc(db,'comments',d.id))));
+    // 게시글 삭제
+    await deleteDoc(doc(db,'posts',postId));
+    // 목록으로 돌아가기
+    if(S._unsubComments){ S._unsubComments(); S._unsubComments=null; }
+    set({screen:'main', selPost:null, comments:[]});
+  }catch(e){
+    alert('삭제 오류: '+e.message);
+  }
+}
 async function doApprove(uid,approve){
   await updateDoc(doc(db,'users',uid),{status:approve?'approved':'rejected',reviewedAt:Date.now()});
   if(approve) refreshVets();
@@ -684,6 +700,14 @@ function rPostDetail(){
     <div class="ov-hdr">
       <button class="ov-back" data-a="close-post">←</button>
       <span class="ov-title">게시글</span>
+      ${(S.userDoc?.uid===p.authorId || S.userDoc?.role==='admin')
+        ?`<button data-a="delete-post" data-id="${p.id}"
+            style="margin-left:auto;background:#FFEBEE;color:#C62828;border:1.5px solid #FFCDD2;
+                   border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;
+                   cursor:pointer;font-family:inherit">
+            🗑️ 삭제
+          </button>`
+        :''}
     </div>
     <div class="ov-scroll" style="padding-bottom:80px">
       ${p.targetVetName?`<div class="target-vet" style="margin-bottom:12px">🩺 ${esc(p.targetVetName)} 선생님께</div>`:''}
@@ -797,6 +821,7 @@ function bindEvents(){
         if(S._unsubComments){S._unsubComments();S._unsubComments=null;}
         set({screen:'main',selPost:null,comments:[]});
       }
+      else if(a==='delete-post') await doDeletePost(el.dataset.id);
       else if(a==='do-comment') { syncComment(); await doComment(); }
       else if(a==='approve')    await doApprove(el.dataset.uid,true);
       else if(a==='reject')     await doApprove(el.dataset.uid,false);
