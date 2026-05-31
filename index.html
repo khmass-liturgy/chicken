@@ -121,13 +121,18 @@ body{background:#F0F7F0}
 .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;flex-shrink:0;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .loading-row{display:flex;align-items:center;justify-content:center;gap:10px}
+.photo-btns{display:flex;gap:10px;padding:20px 16px}
+.photo-btn{flex:1;padding:14px 8px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;display:block;font-family:inherit}
+.photo-btn-cam{background:#1B5E20;color:#fff}
+.photo-btn-gal{background:#E8F5E9;color:#1B5E20;border:1.5px solid #81C784}
 .spacer{height:40px}
 .photo-loading{width:100%;height:200px;background:#E8F5E9;border-radius:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;color:#9E9E9E;font-size:14px}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" />
+<input type="file" id="pi-cam" accept="image/*" capture="environment" style="display:none" />
+<input type="file" id="pi-gal" accept="image/*" style="display:none" />
 
 <script type="module">
 import { initializeApp }      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -138,12 +143,12 @@ import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, query, or
 // ║  ⚠️  Firebase 설정값을 여기에 입력하세요         ║
 // ╚══════════════════════════════════════════════════╝
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyALVnXknySYP_snXoSRLFEECF2MRtQJ0Yc",
-  authDomain:        "chicken-dx.firebaseapp.com",
-  projectId:         "chicken-dx",
-  storageBucket:     "chicken-dx.firebasestorage.app",
-  messagingSenderId: "356503598433",
-  appId:             "1:356503598433:web:82cb4969475d53dd9e4120",
+  apiKey:            "여기에_입력",
+  authDomain:        "여기에_입력",
+  projectId:         "여기에_입력",
+  storageBucket:     "여기에_입력",
+  messagingSenderId: "여기에_입력",
+  appId:             "여기에_입력",
 };
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
@@ -357,12 +362,20 @@ function rSubmit(){
   const photoHtml=S.newPhotoUrl?`
     <div class="photo-area hp"><img src="${S.newPhotoUrl}" alt="사진"/>
       ${!S.submitting?`<button class="clr-photo" data-a="clr-photo">✕</button>`:''}</div>
-    ${!S.submitting?`<button class="re-photo" data-a="pick">📷 다른 사진 선택</button>`:''}`:`
-    <div class="photo-area" data-a="pick">
+    ${!S.submitting?`<div class="photo-btns">
+      <label for="pi-cam" class="photo-btn photo-btn-cam">📷 카메라 재촬영</label>
+      <label for="pi-gal" class="photo-btn photo-btn-gal">🖼️ 갤러리 선택</label>
+    </div>`:''}`:`
+    <div class="photo-area" style="cursor:default;min-height:120px">
       <div class="pp"><div class="pp-icon">📷</div>
-        <div class="pp-hint">사진을 선택하거나 촬영하세요</div>
+        <div class="pp-hint">아래 버튼으로 사진을 선택하세요</div>
         <div class="pp-sub">닭의 이상 부위가 잘 보이도록 찍어주세요</div>
-      </div></div>`;
+      </div>
+    </div>
+    <div class="photo-btns">
+      <label for="pi-cam" class="photo-btn photo-btn-cam">📷 카메라 촬영</label>
+      <label for="pi-gal" class="photo-btn photo-btn-gal">🖼️ 갤러리 선택</label>
+    </div>`;
   return`
 <div style="background:#F0F7F0;min-height:100vh;display:flex;flex-direction:column">
   <div class="app-hdr" style="background:#1B5E20">
@@ -453,7 +466,6 @@ function bind(){
     else if(a==='go-sub')     set({screen:'submit',newPhotoUrl:null,desc:''});
     else if(a==='back-f')     set({screen:'farmer'});
     else if(a==='back-dash')  set({screen:S.role,sel:null,comment:''});
-    else if(a==='pick')       document.getElementById('photo-input').click();
     else if(a==='clr-photo')  set({newPhotoUrl:null});
     else if(a==='submit')    { S.desc=document.getElementById('di')?.value||S.desc; await doSubmit(); }
     else if(a==='do-comment'){ S.comment=document.getElementById('ci')?.value||S.comment; await doComment(); }
@@ -470,8 +482,11 @@ function bind(){
   const ci=document.getElementById('ci');
   if(ci) ci.addEventListener('input',e=>{ S.comment=e.target.value; const b=document.querySelector('[data-a="do-comment"]'); if(b) b.disabled=!e.target.value.trim()||S.saving; });
 
-  const pi=document.getElementById('photo-input');
-  if(pi&&!pi._bound){ pi._bound=true; pi.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return; const url=await resizeImg(f); set({newPhotoUrl:url}); e.target.value=''; }); }
+  const pi1=document.getElementById('pi-cam');
+  const pi2=document.getElementById('pi-gal');
+  async function handleFile(e){ const f=e.target.files[0]; if(!f)return; const url=await resizeImg(f); set({newPhotoUrl:url}); e.target.value=''; }
+  if(pi1&&!pi1._bound){ pi1._bound=true; pi1.addEventListener('change',handleFile); }
+  if(pi2&&!pi2._bound){ pi2._bound=true; pi2.addEventListener('change',handleFile); }
 }
 
 render();
