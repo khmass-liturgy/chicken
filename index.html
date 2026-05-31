@@ -282,10 +282,12 @@ function startUserListener(uid){
 function startMainListeners(ud){
   if(_mainStarted) return; // 중복 실행 차단
   _mainStarted = true;
-  // 게시글
+  // 게시글 (최신순 정렬은 클라이언트에서)
   if(S._unsubPosts) S._unsubPosts();
-  S._unsubPosts = onSnapshot(query(collection(db,'posts'),orderBy('createdAt','desc')), snap=>{
-    S.posts = snap.docs.map(d=>({id:d.id,...d.data()}));
+  S._unsubPosts = onSnapshot(collection(db,'posts'), snap=>{
+    S.posts = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>b.createdAt - a.createdAt);
     S.myPosts = S.posts.filter(p=>p.authorId===S.authUser?.uid);
     render();
   });
@@ -294,12 +296,15 @@ function startMainListeners(ud){
   // 관리자: 대기 목록
   if(ud.role==='admin'){
     if(S._unsubPending) S._unsubPending();
-    S._unsubPending = onSnapshot(query(collection(db,'users'),where('status','==','pending')), snap=>{
-      // 이메일 기준 중복 제거
+    S._unsubPending = onSnapshot(collection(db,'users'), snap=>{
       const seen = new Set();
       S.pendingUsers = snap.docs
         .map(d=>({id:d.id,...d.data()}))
-        .filter(u=>{ if(seen.has(u.email)) return false; seen.add(u.email); return true; });
+        .filter(u=>{
+          if(u.status!=='pending') return false;
+          if(seen.has(u.email)) return false;
+          seen.add(u.email); return true;
+        });
       render();
     });
   }
@@ -312,9 +317,16 @@ function refreshVets(){
 
 function startCommentsListener(postId){
   if(S._unsubComments) S._unsubComments();
+  // orderBy 제거 → 복합 색인 불필요, 클라이언트에서 정렬
   S._unsubComments = onSnapshot(
-    query(collection(db,'comments'),where('postId','==',postId),orderBy('createdAt','asc')),
-    snap=>{ S.comments=snap.docs.map(d=>({id:d.id,...d.data()})); render(); }
+    query(collection(db,'comments'), where('postId','==',postId)),
+    snap=>{
+      S.comments = snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>a.createdAt - b.createdAt);
+      render();
+    },
+    err=>{ console.error('댓글 오류:', err); }
   );
 }
 
