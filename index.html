@@ -191,13 +191,15 @@ let S = {
   showVetSelect: false,
 
   // 로그인 폼
-  lEmail:'', lPass:'', lErr:'', lLoading:false,
+  lPhone:'', lPass:'', lErr:'', lLoading:false,
 
   // 가입 폼
-  rRole:'farmer', rName:'', rEmail:'', rPass:'', rFarm:'', rClinic:'', rErr:'', rLoading:false,
+  rRole:'farmer', rName:'', rPhone:'', rPass:'', rFarm:'', rClinic:'', rErr:'', rLoading:false,
 
-  // 데이터
-  posts:[], vets:[], myPosts:[], pendingUsers:[],
+  // 알림
+  notifications:[], notifBadge:0, showNotifs:false,
+  _lastNotifTime: Date.now(),
+  _unsubNotifs:null,
 
   // 게시글 상세
   selPost:null, comments:[],
@@ -220,22 +222,77 @@ const fmtDate = ts => new Date(ts).toLocaleDateString('ko-KR',{month:'short',day
 const roleLabel = r => ({farmer:'🌾 농가', vet:'🩺 수의사', admin:'⚙️ 관리자'}[r]||r);
 const roleChipCls = r => ({farmer:'chip-green', vet:'chip-blue', admin:'chip-gray'}[r]||'chip-gray');
 
+// ── 알림 ─────────────────────────────────────
+async function requestNotifPermission(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='default') await Notification.requestPermission();
+  render();
+}
+
+function showBrowserNotif(title, body){
+  if(Notification.permission==='granted'){
+    try{ new Notification(title, {body, icon:'https://em-content.zobj.net/source/apple/391/chicken_1f414.png'}); }
+    catch(e){}
+  }
+}
+
+async function createNotif({toUserId, fromName, postId, postTitle, type}){
+  if(!toUserId || toUserId===S.authUser?.uid) return;
+  try{
+    await addDoc(collection(db,'notifications'),{
+      toUserId, fromName, postId, postTitle, type,
+      message: type==='new_post'
+        ? `${fromName}님이 질문을 올렸습니다`
+        : `${fromName}님이 댓글을 달았습니다`,
+      read:false, createdAt:Date.now(),
+    });
+  }catch(e){ console.error(e); }
+}
+
+async function markNotifRead(notifId){
+  try{
+    await updateDoc(doc(db,'notifications',notifId),{read:true});
+  }catch(e){}
+}
+
+function startNotifsListener(uid){
+  if(S._unsubNotifs){ S._unsubNotifs(); S._unsubNotifs=null; }
+  const startTime = Date.now();
+  S._unsubNotifs = onSnapshot(collection(db,'notifications'), snap=>{
+    const mine = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .filter(n=>n.toUserId===uid && !n.read)
+      .sort((a,b)=>b.createdAt-a.createdAt);
+    // 새 알림 브라우저 팝업
+    mine.filter(n=>n.createdAt>startTime)
+      .forEach(n=>showBrowserNotif('🐔 닭 질병 진단', n.message));
+    S.notifications = mine;
+    S.notifBadge = mine.length;
+    render();
+  });
+}
+
+// 전화번호 → 이메일 변환 (Firebase Auth 내부용)
+const phoneToEmail = p => cleanPhone(p) + '@chicken-dx.com';
+const cleanPhone   = p => p.replace(/[^0-9]/g,'');
+
 // ── 중복 제출 방지 잠금 ────────────────────────
 let _registering = false;
 let _posting = false;
 let _commenting = false;
 let _mainStarted = false;
-let _clickBound = false; // 클릭 리스너 중복 방지
+let _clickBound = false;
+
 onAuthStateChanged(auth, user => {
   if(user){
     S.authUser = user;
-    S.lLoading = false; // 로딩 상태 초기화
+    S.lLoading = false;
     S.screen = 'loading';
     render();
     startUserListener(user.uid);
   } else {
-    ['_unsubUser','_unsubPosts','_unsubComments','_unsubPending'].forEach(k=>{ if(S[k]){S[k]();S[k]=null;} });
-    _mainStarted = false; // 로그아웃 시 초기화
+    ['_unsubUser','_unsubPosts','_unsubComments','_unsubPending','_unsubNotifs'].forEach(k=>{ if(S[k]){S[k]();S[k]=null;} });
+    _mainStarted = false;
     _registering = false;
     Object.assign(S,{authUser:null,userDoc:null,posts:[],vets:[],myPosts:[],pendingUsers:[],
       screen:'login', lLoading:false, rLoading:false});
@@ -293,6 +350,10 @@ function startMainListeners(ud){
   });
   // 수의사 목록
   refreshVets();
+  // 알림 구독
+  startNotifsListener(S.authUser.uid);
+  // 브라우저 알림 권한 요청
+  requestNotifPermission();
   // 관리자: 대기 목록
   if(ud.role==='admin'){
     if(S._unsubPending) S._unsubPending();
@@ -341,54 +402,59 @@ function startCommentsListener(postId){
 
 // ── Auth 액션 ─────────────────────────────────
 async function doLogin(){
-  if(!S.lEmail.trim()||!S.lPass||S.lLoading) return;
-  set({lLoading:true,lErr:''});
+  if(!S.lPhone.trim()||!S.lPass||S.lLoading) return;
+  const phone = cleanPhone(S.lPhone);
+  if(phone.length < 10){ set({lErr:'올바른 전화번호를 입력하세요.', lLoading:false}); return; }
+  set({lLoading:true, lErr:''});
   try{
-    await signInWithEmailAndPassword(auth,S.lEmail.trim(),S.lPass);
+    await signInWithEmailAndPassword(auth, phoneToEmail(phone), S.lPass);
   }catch(e){
-    const m={'auth/user-not-found':'등록된 이메일이 없습니다.','auth/wrong-password':'비밀번호가 틀렸습니다.',
-             'auth/invalid-credential':'이메일 또는 비밀번호가 올바르지 않습니다.','auth/invalid-email':'이메일 형식이 올바르지 않습니다.'};
-    set({lLoading:false,lErr:m[e.code]||'로그인 오류: '+e.message});
+    const m={
+      'auth/user-not-found':'등록된 전화번호가 없습니다.',
+      'auth/wrong-password':'비밀번호가 틀렸습니다.',
+      'auth/invalid-credential':'전화번호 또는 비밀번호가 올바르지 않습니다.',
+      'auth/invalid-email':'전화번호를 확인해 주세요.',
+    };
+    set({lLoading:false, lErr:m[e.code]||'로그인 오류: '+e.message});
   }
 }
 
 async function doRegister(){
-  if(_registering) return; // 중복 제출 완전 차단
-  const {rRole,rName,rEmail,rPass,rFarm,rClinic} = S;
-  if(!rName.trim()||!rEmail.trim()||!rPass){ set({rErr:'모든 항목을 입력해주세요.'}); return; }
+  if(_registering) return;
+  const {rRole,rName,rPhone,rPass,rFarm,rClinic} = S;
+  if(!rName.trim()||!rPhone.trim()||!rPass){ set({rErr:'모든 항목을 입력해주세요.'}); return; }
   if(rRole==='farmer'&&!rFarm.trim()){ set({rErr:'농장명을 입력해주세요.'}); return; }
   if(rRole==='vet'&&!rClinic.trim()){ set({rErr:'병원/기관명을 입력해주세요.'}); return; }
   if(rPass.length<6){ set({rErr:'비밀번호는 6자 이상이어야 합니다.'}); return; }
-  set({rLoading:true,rErr:''});
+  const phone = cleanPhone(rPhone);
+  if(phone.length<10){ set({rErr:'올바른 전화번호를 입력해주세요.'}); return; }
+  const email = phoneToEmail(phone);
+  set({rLoading:true, rErr:''});
   _registering = true;
   try{
-    const cred = await createUserWithEmailAndPassword(auth,rEmail.trim(),rPass);
-    const isAdmin = rEmail.trim()===ADMIN_EMAIL;
+    const cred = await createUserWithEmailAndPassword(auth, email, rPass);
+    const isAdmin = phone === cleanPhone(ADMIN_EMAIL.split('@')[0]) || email === ADMIN_EMAIL;
     const userData = {
-      uid:cred.user.uid, name:rName.trim(), email:rEmail.trim(),
+      uid:cred.user.uid, name:rName.trim(), phone, email,
       role: isAdmin?'admin':rRole,
       farmName:  rRole==='farmer'?rFarm.trim():'',
       clinicName:rRole==='vet'?rClinic.trim():'',
       status: isAdmin?'approved':'pending',
       createdAt:Date.now(),
     };
-    // Firestore 저장 (재시도 포함)
-    let saved = false;
-    for(let i=0; i<3; i++){
-      try{
-        await setDoc(doc(db,'users',cred.user.uid), userData);
-        saved = true; break;
-      }catch(err){
-        if(i===2) throw err;
-        await new Promise(r=>setTimeout(r,1000));
-      }
+    let saved=false;
+    for(let i=0;i<3;i++){
+      try{ await setDoc(doc(db,'users',cred.user.uid),userData); saved=true; break; }
+      catch(err){ if(i===2) throw err; await new Promise(r=>setTimeout(r,1000)); }
     }
     set({rLoading:false});
   }catch(e){
-    const m={'auth/email-already-in-use':'이미 가입된 이메일입니다.','auth/weak-password':'비밀번호가 너무 약합니다.',
-             'auth/invalid-email':'이메일 형식이 올바르지 않습니다.'};
-    _registering = false;
-    set({rLoading:false,rErr:m[e.code]||'가입 오류: '+e.message});
+    const m={
+      'auth/email-already-in-use':'이미 가입된 전화번호입니다.',
+      'auth/weak-password':'비밀번호가 너무 약합니다.',
+    };
+    _registering=false;
+    set({rLoading:false, rErr:m[e.code]||'가입 오류: '+e.message});
   }
 }
 
@@ -398,13 +464,20 @@ async function doPost(){
   _posting = true;
   set({npPosting:true});
   try{
-    await addDoc(collection(db,'posts'),{
+    const postRef = await addDoc(collection(db,'posts'),{
       authorId:S.authUser.uid, authorName:S.userDoc.name,
       authorRole:S.userDoc.role, authorFarm:S.userDoc.farmName||'',
       title:S.npTitle.trim(), content:S.npContent.trim(),
       targetVetId:S.npTargetVetId||null, targetVetName:S.npTargetVetName||null,
       commentCount:0, createdAt:Date.now(),
     });
+    // 지정 수의사에게 알림
+    if(S.npTargetVetId){
+      await createNotif({
+        toUserId:S.npTargetVetId, fromName:S.userDoc.name,
+        postId:postRef.id, postTitle:S.npTitle.trim(), type:'new_post'
+      });
+    }
     set({npPosting:false,npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',screen:'main',showVetSelect:false});
     _posting = false;
   }catch(e){
@@ -425,6 +498,13 @@ async function doComment(){
       content:S.newComment.trim(), createdAt:Date.now(),
     });
     await updateDoc(doc(db,'posts',S.selPost.id),{commentCount:(S.selPost.commentCount||0)+1});
+    // 게시글 작성자에게 알림 (자신 제외)
+    if(S.selPost.authorId !== S.authUser.uid){
+      await createNotif({
+        toUserId:S.selPost.authorId, fromName:S.userDoc.name,
+        postId:S.selPost.id, postTitle:S.selPost.title, type:'new_comment'
+      });
+    }
     set({commenting:false,newComment:''});
     _commenting = false;
     // 댓글 즉시 새로고침
@@ -447,6 +527,21 @@ async function doDeleteComment(commentId){
   }catch(e){
     alert('삭제 오류: '+e.message);
   }
+}
+
+async function refreshPendingUsers(){
+  try{
+    const snap = await getDocs(collection(db,'users'));
+    const seen = new Set();
+    S.pendingUsers = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .filter(u=>{
+        if(u.status!=='pending') return false;
+        if(seen.has(u.email)) return false;
+        seen.add(u.email); return true;
+      });
+    render();
+  }catch(e){ console.error(e); }
 }
 
 // ── 관리자 액션 ───────────────────────────────
@@ -515,8 +610,8 @@ function rAuth(tab){ return`
 </div>`; }
 
 function rLoginForm(){ return`
-<div class="form-row"><label class="lbl">이메일</label>
-  <input class="inp" id="l-email" type="email" placeholder="이메일 주소" value="${esc(S.lEmail)}" autocomplete="email"/></div>
+<div class="form-row"><label class="lbl">전화번호</label>
+  <input class="inp" id="l-phone" type="tel" placeholder="010-1234-5678" value="${esc(S.lPhone)}" autocomplete="tel"/></div>
 <div class="form-row"><label class="lbl">비밀번호</label>
   <input class="inp" id="l-pass" type="password" placeholder="비밀번호" autocomplete="current-password"/></div>
 ${S.lErr?`<div class="err">${esc(S.lErr)}</div>`:''}
@@ -542,8 +637,8 @@ function rRegisterForm(){ return`
   <input class="inp" id="r-name" type="text" placeholder="실명" value="${esc(S.rName)}" autocomplete="name"/></div>
 <div class="form-row"><label class="lbl">${S.rRole==='farmer'?'농장명':'병원 / 기관명'}</label>
   <input class="inp" id="r-org" type="text" placeholder="${S.rRole==='farmer'?'농장 이름':'병원 또는 기관명'}" value="${esc(S.rRole==='farmer'?S.rFarm:S.rClinic)}"/></div>
-<div class="form-row"><label class="lbl">이메일</label>
-  <input class="inp" id="r-email" type="email" placeholder="이메일 주소" value="${esc(S.rEmail)}" autocomplete="email"/></div>
+<div class="form-row"><label class="lbl">전화번호</label>
+  <input class="inp" id="r-phone" type="tel" placeholder="010-1234-5678" value="${esc(S.rPhone)}" autocomplete="tel"/></div>
 <div class="form-row"><label class="lbl">비밀번호 <span style="color:#9E9E9E;font-weight:400;font-size:12px">(6자 이상)</span></label>
   <input class="inp" id="r-pass" type="password" placeholder="비밀번호" autocomplete="new-password"/></div>
 ${S.rErr?`<div class="err">${esc(S.rErr)}</div>`:''}
@@ -575,6 +670,9 @@ function rMain(){
   <span class="app-name">🐔 닭 질병 진단</span>
   <div class="user-info">
     <span class="chip ${roleChipCls(ud.role)}">${roleLabel(ud.role)}</span>
+    <button data-a="tab" data-tab="notifs" style="background:none;border:none;cursor:pointer;position:relative;padding:4px 8px;font-size:20px">
+      🔔${S.notifBadge>0?`<span style="position:absolute;top:0;right:0;background:#E53935;color:#fff;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:700">${S.notifBadge}</span>`:''}
+    </button>
     <span class="user-name-chip">👤 ${esc(ud.name||'')}</span>
   </div>
 </div>
@@ -598,10 +696,11 @@ function rMain(){
   </button>
 </div>
 <div class="content">
-  ${S.mainTab==='board'   ? rBoard()    : ''}
+  ${S.mainTab==='board'    ? rBoard()    : ''}
   ${S.mainTab==='vets'    ? rVets()     : ''}
   ${S.mainTab==='myposts' ? rMyPosts()  : ''}
   ${S.mainTab==='admin'   ? rAdmin()    : ''}
+  ${S.mainTab==='notifs'  ? rNotifs()   : ''}
   ${S.mainTab==='settings'? rSettings() : ''}
 </div>
 ${S.mainTab==='board'||S.mainTab==='myposts'?`
@@ -665,19 +764,44 @@ function rMyPosts(){
   </div>`).join('');
 }
 
-// ── 관리자 탭 ─────────────────────────────────
+// ── 알림 탭 ───────────────────────────────────
+function rNotifs(){
+  const notifs = S.notifications;
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 style="font-weight:700;font-size:15px;color:#37474F">🔔 알림 ${notifs.length}개</h3>
+    ${notifs.length>0?`<button data-a="read-all" style="background:none;border:none;color:#2E7D32;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">모두 읽음 처리</button>`:''}
+  </div>
+  ${notifs.length===0
+    ?`<div class="empty"><div class="empty-icon">🔔</div><div class="empty-txt">새 알림이 없습니다.</div></div>`
+    :notifs.map(n=>`
+    <div class="card" data-a="open-notif" data-id="${n.id}" data-postid="${n.postId}"
+      style="cursor:pointer;border-left:3px solid #2E7D32">
+      <div style="font-weight:600;font-size:14px;color:#212121">${esc(n.message)}</div>
+      <div style="font-size:13px;color:#616161;margin-top:4px">${esc(n.postTitle)}</div>
+      <div style="font-size:11px;color:#9E9E9E;margin-top:6px">${fmtDate(n.createdAt)}</div>
+    </div>`).join('')}`;
+}
 function rAdmin(){
   return`
-  <h3 style="font-weight:700;font-size:15px;color:#37474F;margin-bottom:14px">
-    승인 대기 회원 ${S.pendingUsers.length}명
-  </h3>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h3 style="font-weight:700;font-size:15px;color:#37474F">
+      승인 대기 회원 ${S.pendingUsers.length}명
+    </h3>
+    <button data-a="refresh-admin"
+      style="background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7;
+             border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;
+             cursor:pointer;font-family:inherit">
+      🔄 새로고침
+    </button>
+  </div>
   ${S.pendingUsers.length===0
     ?`<div class="empty"><div class="empty-icon">✅</div><div class="empty-txt">대기 중인 가입 신청이 없습니다.</div></div>`
     :S.pendingUsers.map(u=>`
     <div class="admin-user-card">
       <div class="admin-user-name">${esc(u.name)}</div>
       <div class="admin-user-info">
-        ${roleLabel(u.role)} · ${esc(u.email)}<br/>
+        ${roleLabel(u.role)} · 📱 ${esc(u.phone||u.email)}<br/>
         ${u.role==='farmer'?`🌾 ${esc(u.farmName)}`:`🏥 ${esc(u.clinicName)}`}<br/>
         <span style="font-size:11px;color:#BDBDBD">${fmtDate(u.createdAt)} 신청</span>
       </div>
@@ -699,8 +823,16 @@ function rSettings(){
       <div style="margin-top:6px"><span class="chip ${roleChipCls(ud.role)}">${roleLabel(ud.role)}</span></div>
       ${ud.farmName?`<div style="color:#616161;font-size:13px;margin-top:8px">🌾 ${esc(ud.farmName)}</div>`:''}
       ${ud.clinicName?`<div style="color:#616161;font-size:13px;margin-top:8px">🏥 ${esc(ud.clinicName)}</div>`:''}
-      <div style="color:#9E9E9E;font-size:12px;margin-top:6px">${esc(ud.email)}</div>
+      <div style="color:#9E9E9E;font-size:12px;margin-top:6px">📱 ${esc(ud.phone||ud.email)}</div>
     </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-weight:700;font-size:14px;color:#37474F;margin-bottom:10px">🔔 푸시 알림</div>
+    ${'Notification' in window
+      ? Notification.permission==='granted'
+        ? `<p style="color:#2E7D32;font-size:13px">✅ 알림이 허용되어 있습니다.</p>`
+        : `<button data-a="req-notif-perm" class="btn btn-green" style="font-size:14px;padding:11px">알림 허용하기</button>`
+      : `<p style="color:#9E9E9E;font-size:13px">이 브라우저는 알림을 지원하지 않습니다.</p>`}
   </div>
   <button class="btn btn-red" data-a="logout" style="margin-top:8px">로그아웃</button>`;
 }
@@ -817,12 +949,16 @@ function bindEvents(){
       const el=e.target.closest('[data-a]'); if(!el) return;
       const a=el.dataset.a;
 
-      if(a==='auth-tab')        set({screen:el.dataset.tab,lErr:'',rErr:''});
-      else if(a==='set-role')   set({rRole:el.dataset.role});
+      if     (a==='auth-tab')    set({screen:el.dataset.tab,lErr:'',rErr:''});
+      else if(a==='set-role')    set({rRole:el.dataset.role});
       else if(a==='do-login')   { syncLoginForm(); await doLogin(); }
       else if(a==='do-register'){ syncRegisterForm(); await doRegister(); }
       else if(a==='logout')     { _mainStarted=false; await signOut(auth); }
-      else if(a==='tab')        set({mainTab:el.dataset.tab});
+      else if(a==='tab'){
+        set({mainTab:el.dataset.tab});
+        if(el.dataset.tab==='admin') refreshPendingUsers();
+      }
+      else if(a==='refresh-admin') refreshPendingUsers();
       else if(a==='go-new-post') set({screen:'newPost',npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
       else if(a==='close-new-post') set({screen:'main',showVetSelect:false});
       else if(a==='toggle-vet-select') set({showVetSelect:!S.showVetSelect});
@@ -842,6 +978,15 @@ function bindEvents(){
       else if(a==='delete-post')    await doDeletePost(el.dataset.id);
       else if(a==='delete-comment') await doDeleteComment(el.dataset.id);
       else if(a==='do-comment') { syncComment(); await doComment(); }
+      else if(a==='open-notif'){
+        await markNotifRead(el.dataset.id);
+        const p=S.posts.find(x=>x.id===el.dataset.postid);
+        if(p){ set({selPost:p,screen:'postDetail',comments:[],newComment:'',mainTab:'board'}); startCommentsListener(p.id); }
+      }
+      else if(a==='read-all'){
+        S.notifications.forEach(n=>markNotifRead(n.id));
+      }
+      else if(a==='req-notif-perm') await requestNotifPermission();
       else if(a==='approve')    await doApprove(el.dataset.uid,true);
       else if(a==='reject')     await doApprove(el.dataset.uid,false);
       else if(a==='ask-vet')    {
@@ -874,12 +1019,12 @@ function bindEvents(){
 }
 
 function syncLoginForm(){
-  S.lEmail=document.getElementById('l-email')?.value||S.lEmail;
+  S.lPhone=document.getElementById('l-phone')?.value||S.lPhone;
   S.lPass=document.getElementById('l-pass')?.value||S.lPass;
 }
 function syncRegisterForm(){
   S.rName=document.getElementById('r-name')?.value||S.rName;
-  S.rEmail=document.getElementById('r-email')?.value||S.rEmail;
+  S.rPhone=document.getElementById('r-phone')?.value||S.rPhone;
   S.rPass=document.getElementById('r-pass')?.value||S.rPass;
   const org=document.getElementById('r-org')?.value||'';
   if(S.rRole==='farmer') S.rFarm=org; else S.rClinic=org;
