@@ -154,6 +154,8 @@ html,body{height:100%;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-seri
 </head>
 <body>
 <div id="root"></div>
+<input type="file" id="pp-cam" accept="image/*" capture="environment" style="display:none"/>
+<input type="file" id="pp-gal" accept="image/*" style="display:none"/>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -178,7 +180,7 @@ const FIREBASE_CONFIG = {
 
 // 관리자 이메일 (이 이메일로 가입하면 자동 관리자)
 const ADMIN_EMAIL = 'admin@chicken-dx.com';
-const ADMIN_PHONE = '010-9150-8844'; // ← 관리자 연락처 변경하세요
+const ADMIN_PHONE = '010-0000-0000'; // ← 관리자 연락처 변경하세요
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db    = getFirestore(fbApp);
@@ -214,6 +216,7 @@ let S = {
 
   // 새 글
   npTitle:'', npContent:'', npTargetVetId:null, npTargetVetName:'', npPosting:false,
+  npPhoto: null, // 첨부 사진 base64
 
   // 댓글
   newComment:'', commenting:false,
@@ -229,6 +232,27 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const fmtDate = ts => new Date(ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 const roleLabel = r => ({farmer:'🌾 농가', vet:'🩺 수의사', admin:'⚙️ 관리자'}[r]||r);
 const roleChipCls = r => ({farmer:'chip-green', vet:'chip-blue', admin:'chip-gray'}[r]||'chip-gray');
+
+// ── 이미지 리사이즈 ────────────────────────────
+function resizeImg(file){
+  return new Promise(res=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width:w,height:h}=img;
+        const m=800;
+        if(w>m||h>m){ if(w>h){h=Math.round(h*m/w);w=m;}else{w=Math.round(w*m/h);h=m;} }
+        const c=document.createElement('canvas');
+        [c.width,c.height]=[w,h];
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        res(c.toDataURL('image/jpeg',.65));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // ── 알림 ─────────────────────────────────────
 async function requestNotifPermission(){
@@ -483,6 +507,7 @@ async function doPost(){
       authorId:S.authUser.uid, authorName:S.userDoc.name,
       authorRole:S.userDoc.role, authorFarm:S.userDoc.farmName||'',
       title:S.npTitle.trim(), content:S.npContent.trim(),
+      photoUrl: S.npPhoto || null,
       targetVetId:S.npTargetVetId||null, targetVetName:S.npTargetVetName||null,
       commentCount:0, createdAt:Date.now(),
     });
@@ -493,7 +518,8 @@ async function doPost(){
         postId:postRef.id, postTitle:S.npTitle.trim(), type:'new_post'
       });
     }
-    set({npPosting:false,npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',screen:'main',showVetSelect:false});
+    set({npPosting:false,npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',
+         npPhoto:null, screen:'main',showVetSelect:false});
     _posting = false;
   }catch(e){
     alert('오류: '+e.message);
@@ -824,7 +850,10 @@ function rBoard(){
     <div class="post-preview">${esc(p.content)}</div>
     <div class="post-footer">
       <span class="post-date">${fmtDate(p.createdAt)}</span>
-      <span class="post-comments">💬 ${p.commentCount||0}</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        ${p.photoUrl?`<span style="font-size:12px;color:#9E9E9E">📷</span>`:''}
+        <span class="post-comments">💬 ${p.commentCount||0}</span>
+      </span>
     </div>
   </div>`).join('');
 }
@@ -861,7 +890,10 @@ function rMyPosts(){
     <div class="post-preview">${esc(p.content)}</div>
     <div class="post-footer">
       <span class="post-date">${fmtDate(p.createdAt)}</span>
-      <span class="post-comments">💬 ${p.commentCount||0}</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        ${p.photoUrl?`<span style="font-size:12px;color:#9E9E9E">📷</span>`:''}
+        <span class="post-comments">💬 ${p.commentCount||0}</span>
+      </span>
     </div>
   </div>`).join('');
 }
@@ -981,6 +1013,7 @@ function rPostDetail(){
         <span class="post-date">${fmtDate(p.createdAt)}</span>
       </div>
       <div class="post-detail-content">${esc(p.content)}</div>
+      ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;max-height:340px;object-fit:cover;border-radius:14px;margin-top:12px;display:block"/>`:''}
       <div class="divider"></div>
       <div class="comment-count">💬 댓글 ${S.comments.length}개</div>
       ${S.comments.length===0?`<div style="text-align:center;padding:20px;color:#9E9E9E;font-size:13px">첫 댓글을 작성해보세요!</div>`:''}
@@ -1050,6 +1083,16 @@ function rNewPost(){
           style="resize:vertical;line-height:1.65;min-height:180px"
           placeholder="증상이나 질문을 자세히 작성해주세요.">${esc(S.npContent)}</textarea>
       </div>
+      <div class="form-row">
+        <label class="lbl">사진 첨부 <span style="color:#9E9E9E;font-weight:400;font-size:12px">(선택사항)</span></label>
+        ${S.npPhoto
+          ?`<img src="${S.npPhoto}" style="width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:8px;display:block"/>
+            <button data-a="clr-np-photo" style="width:100%;padding:9px;background:#FFEBEE;color:#C62828;border:1.5px solid #FFCDD2;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">✕ 사진 삭제</button>`
+          :`<div style="display:flex;gap:10px">
+              <label for="pp-cam" style="flex:1;padding:12px 8px;background:#1B5E20;color:#fff;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;display:block">📷 카메라</label>
+              <label for="pp-gal" style="flex:1;padding:12px 8px;background:#E8F5E9;color:#1B5E20;border:1.5px solid #81C784;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;display:block">🖼️ 갤러리</label>
+            </div>`}
+      </div>
       <button class="btn btn-green" data-a="do-post" ${(S.npTitle.trim()&&S.npContent.trim()&&!S.npPosting)?'':'disabled'}>
         ${S.npPosting?`<div class="loading-row"><div class="spin"></div><span>등록 중...</span></div>`:'게시글 등록하기'}
       </button>
@@ -1091,7 +1134,8 @@ function bindEvents(){
         await doSendBatch();
       }
       else if(a==='go-new-post') set({screen:'newPost',npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
-      else if(a==='close-new-post') set({screen:'main',showVetSelect:false});
+      else if(a==='close-new-post') set({screen:'main',showVetSelect:false,npPhoto:null});
+      else if(a==='clr-np-photo')   set({npPhoto:null});
       else if(a==='toggle-vet-select') set({showVetSelect:!S.showVetSelect});
       else if(a==='select-vet') {
         set({npTargetVetId:el.dataset.id||null,npTargetVetName:el.dataset.name||'',showVetSelect:false});
@@ -1127,7 +1171,16 @@ function bindEvents(){
     });
   }
 
-  // 엔터키 로그인
+  // 게시글 사진 입력
+  ['pp-cam','pp-gal'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&!el._bound){ el._bound=true; el.addEventListener('change',async e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const url=await resizeImg(f);
+      S.npPhoto=url; render();
+      e.target.value='';
+    });}
+  });
   document.getElementById('l-pass')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){syncLoginForm();doLogin();} });
 
   // 댓글 textarea 동기화
