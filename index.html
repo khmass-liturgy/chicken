@@ -177,7 +177,7 @@ const FIREBASE_CONFIG = {
 };
 
 // 관리자 이메일 (이 이메일로 가입하면 자동 관리자)
-const ADMIN_EMAIL = '00000000000@chicken-dx.com';
+const ADMIN_EMAIL = 'admin@chicken-dx.com';
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db    = getFirestore(fbApp);
@@ -561,9 +561,18 @@ async function doDeletePost(postId){
     alert('삭제 오류: '+e.message);
   }
 }
-async function doApprove(uid,approve){
-  await updateDoc(doc(db,'users',uid),{status:approve?'approved':'rejected',reviewedAt:Date.now()});
-  if(approve) refreshVets();
+async function doApprove(uid, approve){
+  if(!uid){ alert('사용자 ID를 찾을 수 없습니다.'); return; }
+  try{
+    await updateDoc(doc(db,'users',uid),{
+      status: approve ? 'approved' : 'rejected',
+      reviewedAt: Date.now(),
+    });
+    if(approve) refreshVets();
+    await refreshPendingUsers();
+  }catch(e){
+    alert('오류: '+e.message);
+  }
 }
 
 // ── 렌더 ──────────────────────────────────────
