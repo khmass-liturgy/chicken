@@ -178,6 +178,7 @@ const FIREBASE_CONFIG = {
 
 // 관리자 이메일 (이 이메일로 가입하면 자동 관리자)
 const ADMIN_EMAIL = 'admin@chicken-dx.com';
+const ADMIN_PHONE = '010-0000-0000'; // ← 관리자 연락처 변경하세요
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db    = getFirestore(fbApp);
@@ -194,7 +195,11 @@ let S = {
   lPhone:'', lPass:'', lErr:'', lLoading:false,
 
   // 가입 폼
-  rRole:'farmer', rName:'', rPhone:'', rPass:'', rFarm:'', rClinic:'', rErr:'', rLoading:false,
+  rRole:'farmer', rName:'', rPhone:'', rPass:'', rFarm:'', rClinic:'',
+  rLivestock:'', rErr:'', rLoading:false,
+
+  // 단체 알림
+  batchTarget:'전체농가', batchTitle:'', batchContent:'', batchSending:false,
 
   // 알림
   notifications:[], notifBadge:0, showNotifs:false,
@@ -203,6 +208,9 @@ let S = {
 
   // 게시글 상세
   selPost:null, comments:[],
+
+  // 데이터 (초기 빈 배열 - 리스너 도착 전 오류 방지)
+  posts:[], vets:[], myPosts:[], pendingUsers:[],
 
   // 새 글
   npTitle:'', npContent:'', npTargetVetId:null, npTargetVetName:'', npPosting:false,
@@ -429,6 +437,7 @@ async function doRegister(){
   const {rRole,rName,rPhone,rPass,rFarm,rClinic} = S;
   if(!rName.trim()||!rPhone.trim()||!rPass){ set({rErr:'모든 항목을 입력해주세요.'}); return; }
   if(rRole==='farmer'&&!rFarm.trim()){ set({rErr:'농장명을 입력해주세요.'}); return; }
+  if(rRole==='farmer'&&!S.rLivestock){ set({rErr:'축종을 선택해주세요.'}); return; }
   if(rRole==='vet'&&!rClinic.trim()){ set({rErr:'병원/기관명을 입력해주세요.'}); return; }
   if(rPass.length<6){ set({rErr:'비밀번호는 6자 이상이어야 합니다.'}); return; }
   const phone = cleanPhone(rPhone);
@@ -442,6 +451,7 @@ async function doRegister(){
     const userData = {
       uid:cred.user.uid, name:rName.trim(), phone, email,
       role: isAdmin?'admin':rRole,
+      livestock: rRole==='farmer' ? S.rLivestock : '',
       farmName:  rRole==='farmer'?rFarm.trim():'',
       clinicName:rRole==='vet'?rClinic.trim():'',
       status: isAdmin?'approved':'pending',
@@ -549,6 +559,40 @@ async function refreshPendingUsers(){
   }catch(e){ console.error(e); }
 }
 
+// ── 단체 알림 발송 ────────────────────────────
+async function doSendBatch(){
+  if(!S.batchTitle.trim()||!S.batchContent.trim()||S.batchSending) return;
+  if(!confirm(`"${S.batchTitle}" 공지를 발송하시겠습니까?`)) return;
+  set({batchSending:true});
+  try{
+    const snap = await getDocs(collection(db,'users'));
+    let targets = snap.docs.map(d=>({id:d.id,...d.data()}))
+      .filter(u=>u.status==='approved' && (u.uid||u.id)!==S.authUser.uid);
+    if(S.batchTarget==='육계농가')   targets=targets.filter(u=>u.role==='farmer'&&u.livestock==='육계');
+    else if(S.batchTarget==='산란계농가') targets=targets.filter(u=>u.role==='farmer'&&u.livestock==='산란계');
+    else if(S.batchTarget==='전체농가')   targets=targets.filter(u=>u.role==='farmer');
+    // '전체' = 모든 승인 회원
+
+    const postRef = await addDoc(collection(db,'posts'),{
+      authorId:S.authUser.uid, authorName:S.userDoc.name,
+      authorRole:'admin', authorFarm:'',
+      title:`[공지] ${S.batchTitle}`, content:S.batchContent,
+      targetVetId:null, targetVetName:null,
+      batchTarget:S.batchTarget, isNotice:true,
+      commentCount:0, createdAt:Date.now(),
+    });
+    await Promise.all(targets.map(u=>createNotif({
+      toUserId:u.uid||u.id, fromName:`관리자`,
+      postId:postRef.id, postTitle:`[공지] ${S.batchTitle}`, type:'notice',
+    })));
+    alert(`✅ 공지 발송 완료! (${targets.length}명)`);
+    set({batchSending:false, batchTitle:'', batchContent:''});
+  }catch(e){
+    alert('오류: '+e.message);
+    set({batchSending:false});
+  }
+}
+
 // ── 관리자 액션 ───────────────────────────────
 async function doDeletePost(postId){
   if(!confirm('이 게시글을 삭제하시겠습니까?\n댓글도 함께 삭제됩니다.')) return;
@@ -593,11 +637,38 @@ function buildHTML(){
     case 'register':  return rAuth('register');
     case 'pending':   return rStatus('pending');
     case 'rejected':  return rStatus('rejected');
+    case 'forgot':    return rForgot();
     case 'postDetail':return rMain()+rPostDetail();
     case 'newPost':   return rMain()+rNewPost();
     default:          return rMain();
   }
 }
+
+// ── 비밀번호 찾기 화면 ────────────────────────
+function rForgot(){
+  const isFarmer = S.rRole==='farmer';
+  return`
+<div class="auth-screen">
+  <div class="auth-logo">
+    <div class="auth-logo-icon">🔑</div>
+    <div class="auth-logo-title" style="font-size:20px">비밀번호 찾기</div>
+    <div class="auth-logo-sub">관리자에게 재설정을 요청하세요</div>
+  </div>
+  <div class="auth-card">
+    <div style="text-align:center;padding:8px 0 20px">
+      <div style="font-size:48px">📞</div>
+      <p style="color:#212121;font-weight:700;font-size:16px;margin-top:14px">관리자에게 연락하세요</p>
+      <a href="tel:${ADMIN_PHONE.replace(/-/g,'')}"
+        style="display:block;margin-top:12px;font-size:22px;font-weight:900;color:#2E7D32;text-decoration:none">
+        ${ADMIN_PHONE}
+      </a>
+      <p style="color:#9E9E9E;font-size:13px;margin-top:16px;line-height:1.7">
+        관리자가 비밀번호를 초기화해 드립니다.<br/>가입 시 사용한 전화번호를 알려주세요.
+      </p>
+    </div>
+    <button data-a="back-to-login" class="btn btn-gray">← 로그인으로 돌아가기</button>
+  </div>
+</div>`;}
 
 // ── 로딩 ──────────────────────────────────────
 function rLoading(){ return`
@@ -631,6 +702,9 @@ function rLoginForm(){ return`
 ${S.lErr?`<div class="err">${esc(S.lErr)}</div>`:''}
 <button class="btn btn-green" data-a="do-login" style="margin-top:18px" ${S.lLoading?'disabled':''}>
   ${S.lLoading?`<div class="loading-row"><div class="spin"></div><span>로그인 중...</span></div>`:'로그인'}
+</button>
+<button data-a="go-forgot" style="background:none;border:none;color:#9E9E9E;font-size:13px;cursor:pointer;margin-top:12px;width:100%;font-family:inherit">
+  🔑 비밀번호를 잊으셨나요?
 </button>`; }
 
 function rRegisterForm(){ return`
@@ -651,6 +725,20 @@ function rRegisterForm(){ return`
   <input class="inp" id="r-name" type="text" placeholder="실명" value="${esc(S.rName)}" autocomplete="name"/></div>
 <div class="form-row"><label class="lbl">${S.rRole==='farmer'?'농장명':'병원 / 기관명'}</label>
   <input class="inp" id="r-org" type="text" placeholder="${S.rRole==='farmer'?'농장 이름':'병원 또는 기관명'}" value="${esc(S.rRole==='farmer'?S.rFarm:S.rClinic)}"/></div>
+${S.rRole==='farmer'?`
+<div style="margin-bottom:14px">
+  <label class="lbl">축종 선택 <span style="color:#E53935">*</span></label>
+  <div class="role-select">
+    <div class="role-opt ${S.rLivestock==='육계'?'sel':''}" data-a="set-livestock" data-type="육계">
+      <div class="role-opt-icon">🐔</div>
+      <div class="role-opt-label">육계</div>
+    </div>
+    <div class="role-opt ${S.rLivestock==='산란계'?'sel':''}" data-a="set-livestock" data-type="산란계">
+      <div class="role-opt-icon">🥚</div>
+      <div class="role-opt-label">산란계</div>
+    </div>
+  </div>
+</div>`:''}
 <div class="form-row"><label class="lbl">전화번호</label>
   <input class="inp" id="r-phone" type="tel" placeholder="010-1234-5678" value="${esc(S.rPhone)}" autocomplete="tel"/></div>
 <div class="form-row"><label class="lbl">비밀번호 <span style="color:#9E9E9E;font-weight:400;font-size:12px">(6자 이상)</span></label>
@@ -799,15 +887,8 @@ function rNotifs(){
 function rAdmin(){
   return`
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <h3 style="font-weight:700;font-size:15px;color:#37474F">
-      승인 대기 회원 ${S.pendingUsers.length}명
-    </h3>
-    <button data-a="refresh-admin"
-      style="background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7;
-             border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;
-             cursor:pointer;font-family:inherit">
-      🔄 새로고침
-    </button>
+    <h3 style="font-weight:700;font-size:15px;color:#37474F">승인 대기 ${S.pendingUsers.length}명</h3>
+    <button data-a="refresh-admin" style="background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7;border-radius:10px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🔄 새로고침</button>
   </div>
   ${S.pendingUsers.length===0
     ?`<div class="empty"><div class="empty-icon">✅</div><div class="empty-txt">대기 중인 가입 신청이 없습니다.</div></div>`
@@ -816,15 +897,36 @@ function rAdmin(){
       <div class="admin-user-name">${esc(u.name)}</div>
       <div class="admin-user-info">
         ${roleLabel(u.role)} · 📱 ${esc(u.phone||u.email)}<br/>
-        ${u.role==='farmer'?`🌾 ${esc(u.farmName)}`:`🏥 ${esc(u.clinicName)}`}<br/>
+        ${u.role==='farmer'
+          ?`🌾 ${esc(u.farmName)} &nbsp;${u.livestock?`<span style="background:#E8F5E9;color:#2E7D32;padding:1px 8px;border-radius:12px;font-size:11px;font-weight:700">${esc(u.livestock)}</span>`:''}`
+          :`🏥 ${esc(u.clinicName)}`}<br/>
         <span style="font-size:11px;color:#BDBDBD">${fmtDate(u.createdAt)} 신청</span>
       </div>
       <div class="admin-actions">
         <button class="admin-btn-approve" data-a="approve" data-uid="${u.id}">✅ 승인</button>
         <button class="admin-btn-reject" data-a="reject" data-uid="${u.id}">❌ 거절</button>
       </div>
-    </div>`).join('')}`;
-}
+    </div>`).join('')}
+
+  <div style="margin-top:24px;background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+    <div style="font-weight:700;font-size:15px;color:#37474F;margin-bottom:14px">📢 단체 알림 발송</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${['전체농가','육계농가','산란계농가','전체'].map(t=>`
+      <button data-a="set-batch-target" data-target="${t}"
+        style="padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+               background:${S.batchTarget===t?'#1B5E20':'#F5F5F5'};
+               color:${S.batchTarget===t?'#fff':'#616161'};
+               border:1.5px solid ${S.batchTarget===t?'#1B5E20':'#E0E0E0'}">
+        ${t==='육계농가'?'🐔 육계':t==='산란계농가'?'🥚 산란계':t==='전체농가'?'🌾 전체농가':'👥 전체'}
+      </button>`).join('')}
+    </div>
+    <input id="batch-title" class="inp" type="text" placeholder="공지 제목" value="${esc(S.batchTitle)}" style="margin-bottom:10px"/>
+    <textarea id="batch-content" class="inp" rows="4" placeholder="공지 내용을 입력하세요." style="resize:vertical;min-height:100px;line-height:1.65">${esc(S.batchContent)}</textarea>
+    <button data-a="do-batch" class="btn btn-green" style="margin-top:10px" ${S.batchSending?'disabled':''}>
+      ${S.batchSending?`<div class="loading-row"><div class="spin"></div><span>발송 중...</span></div>`:'📢 공지 발송하기'}
+    </button>
+  </div>`;}
+
 
 // ── 내 정보 탭 ────────────────────────────────
 function rSettings(){
@@ -836,6 +938,7 @@ function rSettings(){
       <div style="font-weight:700;font-size:18px;margin-top:10px">${esc(ud.name)}</div>
       <div style="margin-top:6px"><span class="chip ${roleChipCls(ud.role)}">${roleLabel(ud.role)}</span></div>
       ${ud.farmName?`<div style="color:#616161;font-size:13px;margin-top:8px">🌾 ${esc(ud.farmName)}</div>`:''}
+      ${ud.livestock?`<div style="margin-top:6px"><span style="background:#E8F5E9;color:#2E7D32;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:700">${esc(ud.livestock)}</span></div>`:''}
       ${ud.clinicName?`<div style="color:#616161;font-size:13px;margin-top:8px">🏥 ${esc(ud.clinicName)}</div>`:''}
       <div style="color:#9E9E9E;font-size:12px;margin-top:6px">📱 ${esc(ud.phone||ud.email)}</div>
     </div>
@@ -964,7 +1067,10 @@ function bindEvents(){
       const a=el.dataset.a;
 
       if     (a==='auth-tab')    set({screen:el.dataset.tab,lErr:'',rErr:''});
-      else if(a==='set-role')    set({rRole:el.dataset.role});
+      else if(a==='set-role')    { set({rRole:el.dataset.role, rLivestock:''}); }
+      else if(a==='set-livestock') set({rLivestock:el.dataset.type});
+      else if(a==='go-forgot')   set({screen:'forgot'});
+      else if(a==='back-to-login') set({screen:'login'});
       else if(a==='do-login')   { syncLoginForm(); await doLogin(); }
       else if(a==='do-register'){ syncRegisterForm(); await doRegister(); }
       else if(a==='logout')     { _mainStarted=false; await signOut(auth); }
@@ -973,6 +1079,17 @@ function bindEvents(){
         if(el.dataset.tab==='admin') refreshPendingUsers();
       }
       else if(a==='refresh-admin') refreshPendingUsers();
+      else if(a==='set-batch-target'){
+        S.batchTarget=el.dataset.target;
+        S.batchTitle=document.getElementById('batch-title')?.value||S.batchTitle;
+        S.batchContent=document.getElementById('batch-content')?.value||S.batchContent;
+        render();
+      }
+      else if(a==='do-batch'){
+        S.batchTitle=document.getElementById('batch-title')?.value||S.batchTitle;
+        S.batchContent=document.getElementById('batch-content')?.value||S.batchContent;
+        await doSendBatch();
+      }
       else if(a==='go-new-post') set({screen:'newPost',npTitle:'',npContent:'',npTargetVetId:null,npTargetVetName:'',showVetSelect:false});
       else if(a==='close-new-post') set({screen:'main',showVetSelect:false});
       else if(a==='toggle-vet-select') set({showVetSelect:!S.showVetSelect});
