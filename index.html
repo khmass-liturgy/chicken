@@ -372,8 +372,13 @@ function startMainListeners(ud){
 }
 
 function refreshVets(){
-  getDocs(query(collection(db,'users'),where('role','==','vet'),where('status','==','approved')))
-    .then(snap=>{ S.vets=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
+  getDocs(collection(db,'users'))
+    .then(snap=>{
+      S.vets = snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(u=>u.role==='vet' && u.status==='approved');
+      render();
+    });
 }
 
 async function loadComments(postId){
